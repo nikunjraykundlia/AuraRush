@@ -58,19 +58,18 @@ func _setup_ui():
 func _setup_position_display():
 	position_panel = Panel.new()
 	position_panel.name = "PositionPanel"
-	position_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	# Anchor: x=96%, y=94% (bottom right pivot)
-	# Since it's bottom right, we use negative margins usually or anchor points
-	position_panel.anchor_left = 0.96
-	position_panel.anchor_top = 0.94
-	position_panel.anchor_right = 0.96
-	position_panel.anchor_bottom = 0.94
-	# Grow backwards
-	position_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN # Left
-	position_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN   # Up
+	position_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	# Anchor: x=2%, y=50%
+	position_panel.anchor_left = 0.02
+	position_panel.anchor_top = 0.5
+	position_panel.anchor_right = 0.02
+	position_panel.anchor_bottom = 0.5
+	# Grow right
+	position_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	position_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	
-	position_panel.custom_minimum_size = Vector2(160, 60)
-	position_panel.position -= Vector2(160, 60) # Manual offset to ensure it's visible if anchors behave strictly
+	position_panel.custom_minimum_size = Vector2(160, 80)
+	position_panel.position = Vector2(30, -40) # Offset from center-left anchor
 	
 	# Style
 	var style = StyleBoxFlat.new()
@@ -85,8 +84,8 @@ func _setup_position_display():
 	position_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	position_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	position_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	position_label.add_theme_font_size_override("font_size", 28)
-	position_label.text = "POS -/-"
+	position_label.add_theme_font_size_override("font_size", 40)
+	position_label.text = "-/-"
 	position_panel.add_child(position_label)
 
 func _setup_aura_display():
@@ -262,7 +261,7 @@ func _setup_countdown_display():
 
 func update_rank(rank: int, total: int):
 	# Update text
-	position_label.text = "POS %d/%d" % [rank, total]
+	position_label.text = "%d/%d" % [rank, total]
 	
 	# Logic for flash
 	if last_rank != -1 and rank != last_rank:

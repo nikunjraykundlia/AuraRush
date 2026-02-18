@@ -71,6 +71,7 @@ var bot_positions: Array[float] = []   # Distance along track
 var bot_lanes: Array[int] = []
 var bot_speeds: Array[float] = []
 var bot_lane_change_timers: Array[float] = []
+var bot_current_x: Array[float] = [] 
 var ai_active: bool = false
 
 # --- Race State ---
@@ -252,6 +253,7 @@ func _setup_bots() -> void:
 		# Let's make it wider and purely random.
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
+		bot_current_x.append(bot_x)
 	
 	if hud:
 		hud.init_minimap_markers(bot_colors)
@@ -404,6 +406,10 @@ func _process(delta: float) -> void:
 		"finished":
 			pass
 
+var flipped_alert_timer: float = 0.0
+
+# ... (existing vars)
+
 func _physics_process(delta: float) -> void:
 	if is_paused:
 		return
@@ -432,6 +438,35 @@ func _physics_process(delta: float) -> void:
 				hud.update_minimap(player_prog, bot_progs)
 		
 		_check_player_fall_respawn()
+		_check_player_flipped(delta)
+
+func _check_player_flipped(delta: float) -> void:
+	if not player_body: return
+	
+	# Check if car's up vector is pointing somewhat down or sideways (dot product with World Up)
+	# 0.4 means it's tilted more than ~65 degrees from upright
+	if player_body.global_transform.basis.y.dot(Vector3.UP) < 0.4:
+		flipped_alert_timer += delta
+		if flipped_alert_timer > 1.5: # 1.5 seconds threshold
+			_reset_car_orientation()
+			flipped_alert_timer = 0.0
+	else:
+		flipped_alert_timer = 0.0
+
+func _reset_car_orientation() -> void:
+	if not player_body: return
+	
+	var current_pos = player_body.global_position
+	
+	# Reset orientation but keep position (lift slightly to avoid clipping)
+	player_body.linear_velocity = Vector3.ZERO
+	player_body.angular_velocity = Vector3.ZERO
+	player_body.global_position = Vector3(current_pos.x, current_pos.y + 1.0, current_pos.z)
+	player_body.rotation_degrees = Vector3(0, 180, 0) # Face forward
+	
+	if hud:
+		hud.show_countdown_step("RECOVERED")
+		get_tree().create_timer(1.0).timeout.connect(func(): hud.hide_countdown())
 
 func _check_player_fall_respawn() -> void:
 	if not player_body: return
@@ -524,10 +559,21 @@ func _update_bot_ai(delta: float) -> void:
 		if bot_lane_change_timers[i] <= 0.0:
 			_bot_consider_lane_change(i)
 		
-		# Update bot position
-		var bot_x := _lane_to_x(bot_lanes[i])
+		# Update bot position (Smooth lane change)
+		var target_x := _lane_to_x(bot_lanes[i])
+		# Interpolate current x towards target x
+		# Adjust the lerp weight (e.g., 5.0 * delta) to control smoothness speed
+		var prev_x = bot_current_x[i]
+		bot_current_x[i] = lerpf(bot_current_x[i], target_x, 5.0 * delta)
+		
+		# Calculate banking (roll) based on lateral movement
+		var lateral_speed = (bot_current_x[i] - prev_x) / delta
+		var target_roll = clamp(lateral_speed * -0.05, -0.2, 0.2) # Bank into turn
+		var current_rot = bot.rotation.z
+		bot.rotation.z = lerpf(current_rot, target_roll, 5.0 * delta)
+		
 		var current_z = bot_positions[i]
-		bot.position = Vector3(bot_x, 1.5, current_z)
+		bot.position = Vector3(bot_current_x[i], 1.5, current_z)
 
 func _bot_consider_lane_change(bot_index: int) -> void:
 	# Check if player is ahead in same lane - try to block or overtake
