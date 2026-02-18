@@ -18,7 +18,8 @@ config/name="Arcade Racing"
 config/description="A basic 3D arcade racing game with placeholder assets"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
-config/icon="res://icon.svg"
+config/icon="res://game_icon.png"
+application/boot_splash/image="res://game_icon.png"
 
 [display]
 

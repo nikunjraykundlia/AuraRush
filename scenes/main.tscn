@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" path="res://scenes/track.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="4"]
 [ext_resource type="Script" path="res://scenes/pause_menu.gd" id="5_tbgi4"]
+[ext_resource type="Texture2D" path="res://game_icon.png" id="6_logo"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
@@ -57,6 +58,13 @@ offset_left = -100.0
 offset_top = -75.0
 offset_right = 100.0
 offset_bottom = 75.0
+
+[node name="Logo" type="TextureRect" parent="PauseMenu/VBoxContainer"]
+layout_mode = 2
+texture = ExtResource("6_logo")
+expand_mode = 3
+stretch_mode = 5
+custom_minimum_size = Vector2(0, 150)
 
 [node name="PauseLabel" type="Label" parent="PauseMenu/VBoxContainer"]
 layout_mode = 2
