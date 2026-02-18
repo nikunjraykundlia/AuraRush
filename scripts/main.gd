@@ -6,7 +6,7 @@ extends Node3D
 
 # --- Race Configuration ---
 const NUM_BOTS := 3
-const TRACK_LENGTH := 2000.0          # Total track distance in meters
+const TRACK_LENGTH := 3000.0          # Total track distance in meters
 const TRACK_WIDTH := 16.0             # Lane width
 const NUM_LANES := 4                  # Number of driving lanes
 const LANE_WIDTH := TRACK_WIDTH / NUM_LANES
@@ -126,17 +126,27 @@ func _ready() -> void:
 		hud.update_aura(aura_meter)
 		hud.update_rank(1, NUM_BOTS + 1)
 	
-	# Apply Neon Shader to Player Car
-	# Construct Neon Sports Car Visuals for Player
+	# 1. Apply Neon Shader to Player Car Body
 	var player_mesh_node = player_body.get_node_or_null("MeshInstance3D")
 	if player_mesh_node:
 		player_mesh_node.queue_free() # Remove the placeholder box
 		
 		# Create new visuals container
-		var new_visuals = _construct_car_visuals(Color(0.0, 0.96, 1.0))
+		# Player has their own physics wheels, so with_wheels=false
+		var new_visuals = _construct_car_visuals(Color(0.0, 0.96, 1.0), false) 
 		new_visuals.name = "CarVisuals"
-		new_visuals.position = Vector3(0, 0.2, 0) # Adjust height to match wheel axle
+		new_visuals.position = Vector3(0, 0.25, 0) 
 		player_body.add_child(new_visuals)
+	
+	# 2. Apply Neon Shader to Player Wheels
+	var wheel_mat = _create_neon_material(Color(0.0, 0.96, 1.0))
+	for wheel_name in ["FrontLeftWheel", "FrontRightWheel", "RearLeftWheel", "RearRightWheel"]:
+		var wheel_node = player_body.get_node_or_null(wheel_name)
+		if wheel_node:
+			var mesh_inst = wheel_node.get_node_or_null("MeshInstance3D")
+			if mesh_inst:
+				mesh_inst.mesh.material = wheel_mat
+
 	
 	# Allow a momentary delay before countdown starts so scene loads fully
 	await get_tree().create_timer(1.0).timeout
@@ -182,8 +192,9 @@ func _setup_track() -> void:
 			var barrier_body := StaticBody3D.new()
 			# Add frictionless material to prevent sticking
 			var friction_mat := PhysicsMaterial.new()
-			friction_mat.friction = 0.0
-			friction_mat.bounce = 0.5
+			friction_mat.friction = 0.1
+			friction_mat.bounce = 0.05
+			friction_mat.absorbent = true
 			barrier_body.physics_material_override = friction_mat
 			
 			barrier_body.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.25), 0.75, float(i) * segment_length)
@@ -243,8 +254,9 @@ func _setup_bots() -> void:
 		bot_bodies.append(bot)
 		
 		# Construct procedural car visuals
-		var bot_visuals = _construct_car_visuals(bot_colors[i])
-		bot_visuals.position = Vector3(0, 0, 0) # Centered on rigid body
+		# Bots need visual wheels since they are just RigidBodies, so with_wheels=true
+		var bot_visuals = _construct_car_visuals(bot_colors[i], true)
+		bot_visuals.position = Vector3(0, 0, 0) 
 		bot.add_child(bot_visuals)
 		
 		# We don't need to track bot_meshes array as strictly if we aren't changing colors dynamically later
@@ -522,8 +534,8 @@ func _reset_car_orientation() -> void:
 	player_body.rotation_degrees = Vector3(0, 180, 0) # Face forward
 	
 	if hud:
-		hud.show_countdown_step("RECOVERED")
-		get_tree().create_timer(1.0).timeout.connect(func(): hud.hide_countdown())
+		hud.show_recover_alert()
+		get_tree().create_timer(1.0).timeout.connect(func(): hud.hide_recover_alert())
 
 func _check_player_fall_respawn() -> void:
 	if not player_body: return
@@ -588,9 +600,16 @@ func _check_aura_orb_collection() -> void:
 
 func _collect_aura_orb(orb: Node3D) -> void:
 	_add_aura(AURA_ORB_VALUE * aura_streak_multiplier)
+	
+	# Time Bonus: Reduce current race time by 0.1s
+	var time_bonus = 0.1
+	race_time = maxf(race_time - time_bonus, 0.0)
+	
 	orb.visible = false
 	if hud:
 		hud.pulse_aura_display()
+		# Optionally show floating text or indicator for "-0.1s" if we had a method for it
+		# For now, the faster timer update will be the feedback
 
 func _add_aura(amount: float) -> void:
 	aura_meter = minf(aura_meter + amount, AURA_MAX)
@@ -746,51 +765,128 @@ func _lane_to_x(lane: int) -> float:
 func _x_to_lane(x: float) -> int:
 	# Convert X position to lane index
 	var normalized := (x + TRACK_WIDTH / 2.0) / TRACK_WIDTH
-func _construct_car_visuals(color: Color) -> Node3D:
+	return clampi(int(normalized * NUM_LANES), 0, NUM_LANES - 1)
+
+func _construct_car_visuals(color: Color, with_wheels: bool) -> Node3D:
 	var root = Node3D.new()
 	var material = _create_neon_material(color)
+	var black_mat = StandardMaterial3D.new()
+	black_mat.albedo_color = Color(0.05, 0.05, 0.05)
 	
-	# 1. Main Chassis (Lower Body)
-	var chassis = MeshInstance3D.new()
-	chassis.mesh = BoxMesh.new()
-	chassis.mesh.size = Vector3(1.9, 0.5, 4.4) # Wide and long
-	chassis.position = Vector3(0, 0.25, 0)
-	chassis.mesh.material = material
-	root.add_child(chassis)
+	# --- SUPERCAR BODY DESIGN (Pagani-inspired) ---
 	
-	# 2. Cabin (Upper Body) - Set back
-	var cabin = MeshInstance3D.new()
-	cabin.mesh = BoxMesh.new()
-	cabin.mesh.size = Vector3(1.4, 0.6, 2.0)
-	cabin.position = Vector3(0, 0.8, -0.4) # Moved up and slightly back
-	cabin.mesh.material = material
-	root.add_child(cabin)
+	# 1. Central Fuselage (Rounded Cockpit & Body)
+	var body = MeshInstance3D.new()
+	body.mesh = BoxMesh.new() # Using box as base, but we'll add curves
+	body.mesh.size = Vector3(1.6, 0.5, 4.2)
+	body.position = Vector3(0, 0.35, 0)
+	body.mesh.material = material
+	root.add_child(body)
 	
-	# 3. Rear Spoiler Wing
-	var spoiler = MeshInstance3D.new()
-	spoiler.mesh = BoxMesh.new()
-	spoiler.mesh.size = Vector3(2.2, 0.1, 0.6) # Wide wing
-	spoiler.position = Vector3(0, 1.1, -1.8) # High and rear
-	spoiler.mesh.material = material
-	root.add_child(spoiler)
+	# 2. Bubble Cockpit (Teardrop shape)
+	var cockpit = MeshInstance3D.new()
+	var cap_mesh = CapsuleMesh.new()
+	cap_mesh.radius = 0.55
+	cap_mesh.height = 2.2
+	cockpit.mesh = cap_mesh
+	# Rotate to lie flat along Z
+	cockpit.rotation_degrees.x = 90 
+	cockpit.position = Vector3(0, 0.65, -0.2)
+	cockpit.mesh.material = material
+	root.add_child(cockpit)
 	
-	# 4. Spoiler Struts
-	for x_pos in [-0.8, 0.8]:
-		var strut = MeshInstance3D.new()
-		strut.mesh = BoxMesh.new()
-		strut.mesh.size = Vector3(0.2, 0.6, 0.2)
-		strut.position = Vector3(x_pos, 0.8, -1.8)
-		strut.mesh.material = material
-		root.add_child(strut)
+	# 3. Curvy Fenders (Wheel Arches)
+	# We use cylinders rotated 90 deg along Z to make the rounded top of fenders
+	var fender_positions = [
+		Vector3(-0.9, 0.0, 1.3),  # FL
+		Vector3(0.9, 0.0, 1.3),   # FR
+		Vector3(-0.9, 0.1, -1.3), # RL (Rear hips are wider/higher)
+		Vector3(0.9, 0.1, -1.3)   # RR
+	]
+	
+	for i in range(4):
+		var straight_part = MeshInstance3D.new()
+		straight_part.mesh = BoxMesh.new()
+		straight_part.mesh.size = Vector3(0.6, 0.4, 1.4)
+		straight_part.position = fender_positions[i] + Vector3(0, 0.3, 0)
+		straight_part.mesh.material = material
+		root.add_child(straight_part)
 		
-	# 5. Side Skirts / Fenders (Widening the look)
-	for x_side in [-1.0, 1.0]:
-		var skirt = MeshInstance3D.new()
-		skirt.mesh = BoxMesh.new()
-		skirt.mesh.size = Vector3(0.3, 0.4, 3.0)
-		skirt.position = Vector3(x_side, 0.25, 0)
-		skirt.mesh.material = material
-		root.add_child(skirt)
+		# Add a prism on top for a sharp aerodynamic edge? Or just keep it sleek boxy-curved.
+		# Let's add the Front Nose Cone
 	
-	return root
+	# 4. Pointy Nose (Pagani Zonda style)
+	var nose = MeshInstance3D.new()
+	var nose_mesh = PrismMesh.new()
+	nose_mesh.size = Vector3(1.4, 0.4, 1.0)
+	nose.mesh = nose_mesh
+	nose.rotation_degrees.x = -90 # Point forward
+	nose.position = Vector3(0, 0.35, 2.5) # Front
+	nose.mesh.material = material
+	root.add_child(nose)
+	
+	# 5. Rear Engine Deck & Exhausts
+	var rear_deck = MeshInstance3D.new()
+	var rd_mesh = PrismMesh.new()
+	rd_mesh.size = Vector3(1.5, 0.5, 1.2)
+	rear_deck.mesh = rd_mesh
+	rear_deck.rotation_degrees.x = 90 # Slope down to rear
+	rear_deck.position = Vector3(0, 0.5, -2.4)
+	rear_deck.mesh.material = material
+	root.add_child(rear_deck)
+	
+	# Quad Exhaust (Center)
+	var exhaust_group = Node3D.new()
+	exhaust_group.position = Vector3(0, 0.4, -2.9)
+	for x in [-0.1, 0.1]:
+		for y in [-0.1, 0.1]:
+			var pipe = MeshInstance3D.new()
+			pipe.mesh = CylinderMesh.new()
+			pipe.mesh.top_radius = 0.06
+			pipe.mesh.bottom_radius = 0.06
+			pipe.mesh.height = 0.4
+			pipe.rotation_degrees.x = 90
+			pipe.position = Vector3(x, y, 0)
+			# Bright neon inside
+			var pipe_mat = _create_simple_neon_material(Color(1, 0.6, 0.2)) # Orange glow
+			pipe.mesh.material = pipe_mat
+			exhaust_group.add_child(pipe)
+	root.add_child(exhaust_group)
+	
+	# 6. Split Wing Spoiler
+	for side in [-1, 1]:
+		var wing = MeshInstance3D.new()
+		wing.mesh = BoxMesh.new()
+		wing.mesh.size = Vector3(0.8, 0.05, 0.4)
+		wing.position = Vector3(side * 0.5, 0.9, -2.6)
+		wing.rotation_degrees.x = 10 # Attack angle
+		wing.mesh.material = material
+		root.add_child(wing)
+		
+		var fin = MeshInstance3D.new()
+		fin.mesh = BoxMesh.new()
+		fin.mesh.size = Vector3(0.05, 0.4, 0.6)
+		fin.position = Vector3(side * 0.8, 0.7, -2.6)
+		fin.mesh.material = material
+		root.add_child(fin)
 
+	# --- WHEELS (Optional) ---
+	if with_wheels:
+		var wheel_positions = [
+			Vector3(-0.95, 0.4, 1.3),
+			Vector3(0.95, 0.4, 1.3),
+			Vector3(-0.95, 0.4, -1.3),
+			Vector3(0.95, 0.4, -1.3)
+		]
+		for pos in wheel_positions:
+			var w = MeshInstance3D.new()
+			w.mesh = CylinderMesh.new()
+			w.mesh.height = 0.35
+			w.mesh.top_radius = 0.4
+			w.mesh.bottom_radius = 0.4
+			w.rotation_degrees.z = 90 # Stand up
+			w.position = pos
+			w.mesh.material = material # Neon wheels!
+			root.add_child(w)
+			
+	return root

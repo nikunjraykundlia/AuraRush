@@ -13,6 +13,8 @@ var minimap_panel: Panel
 var flash_rect: ColorRect
 var countdown_panel: Control
 var countdown_label: Label
+var recover_panel: Panel
+var recover_label: Label
 
 # --- State Tracking ---
 var current_rank: int = -1
@@ -54,6 +56,9 @@ func _setup_ui():
 	
 	# 6. Countdown (Center)
 	_setup_countdown_display()
+
+	# 7. Recover Display (Top-Center)
+	_setup_recover_display()
 
 func _setup_position_display():
 	position_panel = Panel.new()
@@ -257,6 +262,39 @@ func _setup_countdown_display():
 	countdown_label.add_theme_font_size_override("font_size", 120)
 	countdown_panel.add_child(countdown_label)
 
+func _setup_recover_display():
+	recover_panel = Panel.new()
+	recover_panel.name = "RecoverPanel"
+	recover_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	# Center top, small size
+	recover_panel.anchor_left = 0.4
+	recover_panel.anchor_right = 0.6
+	recover_panel.anchor_top = 0.05
+	recover_panel.anchor_bottom = 0.12
+	recover_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	recover_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	recover_panel.visible = false
+	
+	# Transparent bg or stylized
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.6)
+	style.set_corner_radius_all(6)
+	style.border_width_bottom = 2
+	style.border_color = Color(1.0, 0.2, 0.2) # Reddish warning
+	recover_panel.add_theme_stylebox_override("panel", style)
+	
+	add_child(recover_panel)
+	
+	recover_label = Label.new()
+	recover_label.name = "RecoverLabel"
+	recover_label.text = "RECOVER"
+	recover_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	recover_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	recover_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	recover_label.add_theme_font_size_override("font_size", 28)
+	recover_label.add_theme_color_override("font_color", Color(1.0, 0.2, 0.2))
+	recover_panel.add_child(recover_label)
+
 # --- Updates ---
 
 func update_rank(rank: int, total: int):
@@ -320,6 +358,20 @@ func show_countdown_step(step: Variant):
 func hide_countdown():
 	if countdown_panel:
 		countdown_panel.visible = false
+
+func show_recover_alert():
+	if recover_panel:
+		recover_panel.visible = true
+		
+		# Simple pulse
+		var tween = create_tween()
+		recover_label.scale = Vector2(0.9, 0.9)
+		tween.tween_property(recover_label, "scale", Vector2(1.1, 1.1), 0.2).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(recover_label, "scale", Vector2(1.0, 1.0), 0.2)
+
+func hide_recover_alert():
+	if recover_panel:
+		recover_panel.visible = false
 
 func show_race_complete(winner_name: String, final_pos: int, total: int):
 	# 1. Full screen dimmer

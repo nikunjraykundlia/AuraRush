@@ -4,7 +4,7 @@
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_Car"]
 friction = 0.0
-bounce = 0.2
+bounce = 0.0
 
 [sub_resource type="BoxMesh" id="BoxMesh_1"]
 size = Vector3(1.7, 1, 4)

@@ -1,0 +1,66 @@
+name: Deploy Godot Game to Vercel
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.4.1"
+  EXPORT_NAME: "index"
+
+jobs:
+  export-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install Godot
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          unzip -o Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+          unzip -o Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+
+      - name: Import project
+        run: |
+          godot --headless --import 2>&1 || true
+          # Run import twice to ensure all resources are imported
+          godot --headless --import 2>&1 || true
+
+      - name: Export to Web
+        run: |
+          mkdir -p dist
+          godot --headless --export-release "Web" dist/${{ env.EXPORT_NAME }}.html 2>&1
+
+      - name: Verify export
+        run: |
+          echo "=== Export directory contents ==="
+          ls -la dist/
+          if [ ! -f "dist/index.html" ]; then
+            echo "ERROR: index.html not found in dist/"
+            exit 1
+          fi
+          if [ ! -f "dist/index.wasm" ]; then
+            echo "ERROR: index.wasm not found in dist/"
+            exit 1
+          fi
+          echo "Export verified successfully!"
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./

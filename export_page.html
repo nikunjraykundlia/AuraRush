@@ -1,231 +1,442 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
-		<title>ComponentSystem</title>
-		<style>
-html, body, #canvas {
-	margin: 0;
-	padding: 0;
-	border: 0;
-}
 
-body {
-	color: white;
-	background-color: black;
-	overflow: hidden;
-	touch-action: none;
-}
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
+	<title>Aura Rush - Neon Arcade Racing</title>
+	<meta name="description"
+		content="Aura Rush is a high-speed, neon-styled arcade racing game. Race against AI bots on a luminous track!">
+	<meta name="theme-color" content="#0a0a0f">
+	<meta property="og:title" content="Aura Rush - Neon Arcade Racing">
+	<meta property="og:description" content="High-speed neon arcade racing. Race against AI bots on a luminous track!">
+	<meta property="og:type" content="website">
+	<style>
+		@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
-#canvas {
-	display: block;
-}
-
-#canvas:focus {
-	outline: none;
-}
-
-#status, #status-splash, #status-progress {
-	position: absolute;
-	left: 0;
-	right: 0;
-}
-
-#status, #status-splash {
-	top: 0;
-	bottom: 0;
-}
-
-#status {
-	background-color: #242424;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	visibility: hidden;
-	padding: 2rem;
-}
-
-#status-splash {
-	max-height: 100%;
-	max-width: 100%;
-	margin: auto;
-}
-
-#status-progress, #status-notice {
-	display: none;
-}
-
-#status-progress {
-	appearance: none;
-	-webkit-appearance: none;
-	-moz-appearance: none;
-	bottom: 10%;
-	width: 50%;
-	margin: 0 auto;
-}
-
-/* Chrome, Safari */
-#status-progress::-webkit-progress-bar {
-	background-color: #333;
-}
-
-#status-progress::-webkit-progress-value {
-	background-color: #ff2c3f;
-}
-
-/* Firefox */
-#status-progress::-moz-progress-bar {
-	background-color: #ff2c3f;
-}
-
-#status-notice {
-	background-color: #5b3943;
-	border-radius: 0.5rem;
-	border: 1px solid #9b3943;
-	color: #e0e0e0;
-	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-	line-height: 1.3;
-	margin: 0 2rem;
-	overflow: hidden;
-	padding: 1rem;
-	text-align: center;
-	z-index: 1;
-}
-
-#loading-image {
-	max-width: min(600px, 80vw);
-	margin-bottom: 2rem;
-	animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-	0%, 100% {
-		transform: scale(1);
-	}
-	50% {
-		transform: scale(1.08);
-	}
-}
-		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
-<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
-
-	</head>
-	<body>
-		<canvas id="canvas">
-			Your browser does not support the canvas tag.
-		</canvas>
-
-		<noscript>
-			Your browser does not support JavaScript.
-		</noscript>
-
-		<div id="status">
-			<img id="loading-image" src="index.icon.png" alt="Loading" />
-			<progress id="status-progress"></progress>
-			<div id="status-notice"></div>
-		</div>
-
-		<script src="$GODOT_URL"></script>
-		<script>
-const GODOT_THREADS_ENABLED = false;
-const engine = new Engine($GODOT_CONFIG);
-
-(function () {
-	const statusOverlay = document.getElementById('status');
-	const statusProgress = document.getElementById('status-progress');
-	const statusNotice = document.getElementById('status-notice');
-
-	let initializing = true;
-	let statusMode = '';
-
-	function setStatusMode(mode) {
-		if (statusMode === mode || !initializing) {
-			return;
+		*,
+		*::before,
+		*::after {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
 		}
-		if (mode === 'hidden') {
-			statusOverlay.remove();
-			initializing = false;
-			return;
-		}
-		statusOverlay.style.visibility = 'visible';
-		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
-		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
-		statusMode = mode;
-	}
 
-	function setStatusNotice(text) {
-		while (statusNotice.lastChild) {
-			statusNotice.removeChild(statusNotice.lastChild);
+		html,
+		body,
+		#canvas {
+			margin: 0;
+			padding: 0;
+			border: 0;
 		}
-		const lines = text.split('\n');
-		lines.forEach((line) => {
-			statusNotice.appendChild(document.createTextNode(line));
-			statusNotice.appendChild(document.createElement('br'));
-		});
-	}
 
-	function displayFailureNotice(err) {
-		console.error(err);
-		if (err instanceof Error) {
-			setStatusNotice(err.message);
-		} else if (typeof err === 'string') {
-			setStatusNotice(err);
-		} else {
-			setStatusNotice('An unknown error occured');
+		body {
+			color: white;
+			background-color: #0a0a0f;
+			overflow: hidden;
+			touch-action: none;
+			font-family: 'Orbitron', sans-serif;
 		}
-		setStatusMode('notice');
-		initializing = false;
-	}
 
-	const missing = Engine.getMissingFeatures({
-		threads: GODOT_THREADS_ENABLED,
-	});
-
-	if (missing.length !== 0) {
-		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
-			// There's a chance that installing the service worker would fix the issue
-			Promise.race([
-				navigator.serviceWorker.getRegistration().then((registration) => {
-					if (registration != null) {
-						return Promise.reject(new Error('Service worker already exists.'));
-					}
-					return registration;
-				}).then(() => engine.installServiceWorker()),
-				// For some reason, `getRegistration()` can stall
-				new Promise((resolve) => {
-					setTimeout(() => resolve(), 2000);
-				}),
-			]).catch((err) => {
-				console.error('Error while registering service worker:', err);
-			}).then(() => {
-				window.location.reload();
-			});
-		} else {
-			// Display the message as usual
-			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
-			displayFailureNotice(missingMsg + missing.join('\n'));
+		#canvas {
+			display: block;
 		}
-	} else {
-		setStatusMode('progress');
-		engine.startGame({
-			'onProgress': function (current, total) {
-				if (current > 0 && total > 0) {
-					statusProgress.value = current;
-					statusProgress.max = total;
-				} else {
-					statusProgress.removeAttribute('value');
-					statusProgress.removeAttribute('max');
+
+		#canvas:focus {
+			outline: none;
+		}
+
+		#status,
+		#status-splash,
+		#status-progress {
+			position: absolute;
+			left: 0;
+			right: 0;
+		}
+
+		#status,
+		#status-splash {
+			top: 0;
+			bottom: 0;
+		}
+
+		#status {
+			background: radial-gradient(ellipse at center, #0f1023 0%, #0a0a0f 70%);
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			visibility: hidden;
+			padding: 2rem;
+		}
+
+		/* Animated background grid */
+		#status::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background-image:
+				linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+				linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+			background-size: 50px 50px;
+			animation: gridMove 20s linear infinite;
+			pointer-events: none;
+		}
+
+		@keyframes gridMove {
+			from {
+				transform: translateY(0);
+			}
+
+			to {
+				transform: translateY(50px);
+			}
+		}
+
+		#status-splash {
+			max-height: 100%;
+			max-width: 100%;
+			margin: auto;
+		}
+
+		#status-progress,
+		#status-notice {
+			display: none;
+		}
+
+		/* Loading title */
+		#loading-title {
+			font-family: 'Orbitron', sans-serif;
+			font-size: clamp(1.8rem, 5vw, 3.5rem);
+			font-weight: 900;
+			background: linear-gradient(135deg, #00f5ff, #b400ff, #ff2c3f, #00f5ff);
+			background-size: 300% 300%;
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+			animation: gradientShift 3s ease infinite;
+			text-align: center;
+			margin-bottom: 0.5rem;
+			letter-spacing: 0.15em;
+			text-transform: uppercase;
+			filter: drop-shadow(0 0 20px rgba(0, 245, 255, 0.4));
+			z-index: 2;
+		}
+
+		@keyframes gradientShift {
+
+			0%,
+			100% {
+				background-position: 0% 50%;
+			}
+
+			50% {
+				background-position: 100% 50%;
+			}
+		}
+
+		#loading-subtitle {
+			font-family: 'Orbitron', sans-serif;
+			font-size: clamp(0.6rem, 1.5vw, 0.9rem);
+			color: rgba(255, 255, 255, 0.4);
+			letter-spacing: 0.3em;
+			text-transform: uppercase;
+			margin-bottom: 2.5rem;
+			z-index: 2;
+		}
+
+		#loading-image {
+			max-width: min(500px, 70vw);
+			margin-bottom: 2rem;
+			animation: pulse 2s ease-in-out infinite;
+			border-radius: 16px;
+			filter: drop-shadow(0 0 30px rgba(0, 245, 255, 0.3));
+			z-index: 2;
+		}
+
+		@keyframes pulse {
+
+			0%,
+			100% {
+				transform: scale(1);
+				filter: drop-shadow(0 0 30px rgba(0, 245, 255, 0.3));
+			}
+
+			50% {
+				transform: scale(1.04);
+				filter: drop-shadow(0 0 50px rgba(0, 245, 255, 0.5));
+			}
+		}
+
+		/* Progress bar */
+		#status-progress {
+			appearance: none;
+			-webkit-appearance: none;
+			-moz-appearance: none;
+			bottom: 12%;
+			position: absolute;
+			left: 50%;
+			transform: translateX(-50%);
+			width: min(400px, 60vw);
+			height: 6px;
+			border-radius: 3px;
+			overflow: hidden;
+			background: rgba(255, 255, 255, 0.08);
+			border: 1px solid rgba(0, 245, 255, 0.15);
+			z-index: 2;
+		}
+
+		#status-progress::-webkit-progress-bar {
+			background: transparent;
+			border-radius: 3px;
+		}
+
+		#status-progress::-webkit-progress-value {
+			background: linear-gradient(90deg, #00f5ff, #b400ff);
+			border-radius: 3px;
+			box-shadow: 0 0 15px rgba(0, 245, 255, 0.6);
+			transition: width 0.3s ease;
+		}
+
+		#status-progress::-moz-progress-bar {
+			background: linear-gradient(90deg, #00f5ff, #b400ff);
+			border-radius: 3px;
+			box-shadow: 0 0 15px rgba(0, 245, 255, 0.6);
+		}
+
+		#loading-status-text {
+			position: absolute;
+			bottom: 8%;
+			left: 50%;
+			transform: translateX(-50%);
+			font-family: 'Orbitron', sans-serif;
+			font-size: 0.7rem;
+			color: rgba(0, 245, 255, 0.6);
+			letter-spacing: 0.2em;
+			text-transform: uppercase;
+			animation: blink 1.5s ease-in-out infinite;
+			z-index: 2;
+		}
+
+		@keyframes blink {
+
+			0%,
+			100% {
+				opacity: 1;
+			}
+
+			50% {
+				opacity: 0.3;
+			}
+		}
+
+		/* Decorative corner accents */
+		.corner-accent {
+			position: absolute;
+			width: 60px;
+			height: 60px;
+			border-color: rgba(0, 245, 255, 0.2);
+			border-style: solid;
+			border-width: 0;
+			z-index: 2;
+		}
+
+		.corner-accent.top-left {
+			top: 20px;
+			left: 20px;
+			border-top-width: 2px;
+			border-left-width: 2px;
+		}
+
+		.corner-accent.top-right {
+			top: 20px;
+			right: 20px;
+			border-top-width: 2px;
+			border-right-width: 2px;
+		}
+
+		.corner-accent.bottom-left {
+			bottom: 20px;
+			left: 20px;
+			border-bottom-width: 2px;
+			border-left-width: 2px;
+		}
+
+		.corner-accent.bottom-right {
+			bottom: 20px;
+			right: 20px;
+			border-bottom-width: 2px;
+			border-right-width: 2px;
+		}
+
+		/* Error notice */
+		#status-notice {
+			background: rgba(91, 57, 67, 0.9);
+			backdrop-filter: blur(10px);
+			border-radius: 12px;
+			border: 1px solid rgba(255, 44, 63, 0.4);
+			color: #e0e0e0;
+			font-family: 'Orbitron', 'Noto Sans', Arial, sans-serif;
+			font-size: 0.85rem;
+			line-height: 1.6;
+			margin: 0 2rem;
+			overflow: hidden;
+			padding: 1.5rem 2rem;
+			text-align: center;
+			z-index: 10;
+			box-shadow: 0 0 30px rgba(255, 44, 63, 0.2);
+		}
+
+		/* Mobile-friendly controls hint */
+		#controls-hint {
+			position: absolute;
+			bottom: 3%;
+			left: 50%;
+			transform: translateX(-50%);
+			font-family: 'Orbitron', sans-serif;
+			font-size: 0.55rem;
+			color: rgba(255, 255, 255, 0.2);
+			letter-spacing: 0.15em;
+			text-transform: uppercase;
+			z-index: 2;
+		}
+	</style>
+	<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+	<link rel="apple-touch-icon" href="index.apple-touch-icon.png" />
+
+</head>
+
+<body>
+	<canvas id="canvas">
+		Your browser does not support the canvas tag.
+	</canvas>
+
+	<noscript>
+		Your browser does not support JavaScript.
+	</noscript>
+
+	<div id="status">
+		<div class="corner-accent top-left"></div>
+		<div class="corner-accent top-right"></div>
+		<div class="corner-accent bottom-left"></div>
+		<div class="corner-accent bottom-right"></div>
+
+		<div id="loading-title">Aura Rush</div>
+		<div id="loading-subtitle">neon arcade racing</div>
+		<img id="loading-image" src="index.icon.png" alt="Aura Rush" />
+		<progress id="status-progress"></progress>
+		<div id="loading-status-text">Initializing Engine...</div>
+		<div id="status-notice"></div>
+		<div id="controls-hint">WASD to drive • Space to jump • Esc to pause</div>
+	</div>
+
+	<script src="$GODOT_URL"></script>
+	<script>
+		const GODOT_THREADS_ENABLED = false;
+		const engine = new Engine($GODOT_CONFIG);
+
+		(function () {
+			const statusOverlay = document.getElementById('status');
+			const statusProgress = document.getElementById('status-progress');
+			const statusNotice = document.getElementById('status-notice');
+			const loadingStatusText = document.getElementById('loading-status-text');
+
+			let initializing = true;
+			let statusMode = '';
+
+			function setStatusMode(mode) {
+				if (statusMode === mode || !initializing) {
+					return;
 				}
-			},
-		}).then(() => {
-			setStatusMode('hidden');
-		}, displayFailureNotice);
-	}
-}());
-		</script>
-	</body>
-</html>
+				if (mode === 'hidden') {
+					statusOverlay.style.opacity = '0';
+					statusOverlay.style.transition = 'opacity 0.5s ease';
+					setTimeout(() => { statusOverlay.remove(); }, 500);
+					initializing = false;
+					return;
+				}
+				statusOverlay.style.visibility = 'visible';
+				statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+				statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+				statusMode = mode;
+			}
 
+			function setStatusNotice(text) {
+				while (statusNotice.lastChild) {
+					statusNotice.removeChild(statusNotice.lastChild);
+				}
+				const lines = text.split('\n');
+				lines.forEach((line) => {
+					statusNotice.appendChild(document.createTextNode(line));
+					statusNotice.appendChild(document.createElement('br'));
+				});
+			}
+
+			function displayFailureNotice(err) {
+				console.error(err);
+				if (loadingStatusText) loadingStatusText.style.display = 'none';
+				if (err instanceof Error) {
+					setStatusNotice(err.message);
+				} else if (typeof err === 'string') {
+					setStatusNotice(err);
+				} else {
+					setStatusNotice('An unknown error occurred');
+				}
+				setStatusMode('notice');
+				initializing = false;
+			}
+
+			const missing = Engine.getMissingFeatures({
+				threads: GODOT_THREADS_ENABLED,
+			});
+
+			if (missing.length !== 0) {
+				if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
+					Promise.race([
+						navigator.serviceWorker.getRegistration().then((registration) => {
+							if (registration != null) {
+								return Promise.reject(new Error('Service worker already exists.'));
+							}
+							return registration;
+						}).then(() => engine.installServiceWorker()),
+						new Promise((resolve) => {
+							setTimeout(() => resolve(), 2000);
+						}),
+					]).catch((err) => {
+						console.error('Error while registering service worker:', err);
+					}).then(() => {
+						window.location.reload();
+					});
+				} else {
+					const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
+					displayFailureNotice(missingMsg + missing.join('\n'));
+				}
+			} else {
+				setStatusMode('progress');
+				if (loadingStatusText) loadingStatusText.textContent = 'Loading Game Assets...';
+				engine.startGame({
+					'onProgress': function (current, total) {
+						if (current > 0 && total > 0) {
+							statusProgress.value = current;
+							statusProgress.max = total;
+							const pct = Math.round((current / total) * 100);
+							if (loadingStatusText) {
+								loadingStatusText.textContent = `Loading... ${pct}%`;
+							}
+						} else {
+							statusProgress.removeAttribute('value');
+							statusProgress.removeAttribute('max');
+						}
+					},
+				}).then(() => {
+					setStatusMode('hidden');
+				}, displayFailureNotice);
+			}
+		}());
+	</script>
+</body>
+
+</html>

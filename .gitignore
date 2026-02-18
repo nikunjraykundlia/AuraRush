@@ -143,3 +143,6 @@ _.msm
 \*.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/godot,windows,macos,linux,visualstudiocode
+
+# Godot Web Export build output
+dist/
