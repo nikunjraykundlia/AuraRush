@@ -1,10 +1,10 @@
 [gd_scene load_steps=9 format=3 uid="uid://b1234568aa0"]
 
-[ext_resource type="Script" uid="uid://c8tc56u64vk2o" path="res://scripts/main.gd" id="1"]
-[ext_resource type="PackedScene" uid="uid://bekjnxwt3qw5n" path="res://scenes/car.tscn" id="2"]
+[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/car.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/track.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="4"]
-[ext_resource type="Script" uid="uid://bvmv28m5a8tso" path="res://scenes/pause_menu.gd" id="5_tbgi4"]
+[ext_resource type="Script" path="res://scenes/pause_menu.gd" id="5_tbgi4"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)

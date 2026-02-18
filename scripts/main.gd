@@ -100,6 +100,7 @@ var is_paused: bool = false
 # ============================================================================
 
 func _ready() -> void:
+	randomize()
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	
 	# Find references
@@ -222,7 +223,11 @@ func _setup_bots() -> void:
 		# Initialize bot state
 		bot_positions.append(bot_z)
 		bot_lanes.append(bot_lane)
-		bot_speeds.append(BOT_BASE_SPEEDS[i])
+		# Randomize bot speed for this session
+		var speed = randf_range(40.0, 52.0) # Speed varying between 40 and 52 km/h (converted to units) 
+		# Note: The speeds in main.gd seem to be in units per second, not km/h directly, but 40-45 was previous range.
+		# Let's make it wider and purely random.
+		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
 
 func _setup_aura_orbs() -> void:
