@@ -1,0 +1,327 @@
+extends CanvasLayer
+
+# --- UI Nodes ---
+var position_panel: Panel
+var position_label: Label
+var aura_container: VBoxContainer
+var aura_label: Label
+var aura_value: Label
+var timer_panel: Panel
+var timer_label: Label
+var best_time_label: Label
+var minimap_panel: Panel
+var flash_rect: ColorRect
+var countdown_panel: Control
+var countdown_label: Label
+
+# --- State Tracking ---
+var current_rank: int = -1
+var total_racers: int = 0
+var last_rank: int = -1
+
+# --- User Preferences ---
+var large_font_mode: bool = false
+var high_contrast_mode: bool = false
+
+func _ready():
+	_setup_ui()
+	
+	# Initial state
+	if countdown_panel:
+		countdown_panel.visible = false
+	
+	# Connect to parent/main if possible, or wait for main to call methods
+	
+func _setup_ui():
+	# Clean up existing children to ensure fresh layout
+	for child in get_children():
+		child.queue_free()
+		
+	# 1. Position Display (Bottom-Right)
+	_setup_position_display()
+	
+	# 2. Aura Display (Right-Center)
+	_setup_aura_display()
+	
+	# 3. Timer & Best Time (Top-Right)
+	_setup_timer_display()
+	
+	# 4. Minimap (Top-Left)
+	_setup_minimap_display()
+	
+	# 5. VFX Overlay
+	_get_or_create_flash_rect()
+	
+	# 6. Countdown (Center)
+	_setup_countdown_display()
+
+func _setup_position_display():
+	position_panel = Panel.new()
+	position_panel.name = "PositionPanel"
+	position_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	# Anchor: x=96%, y=94% (bottom right pivot)
+	# Since it's bottom right, we use negative margins usually or anchor points
+	position_panel.anchor_left = 0.96
+	position_panel.anchor_top = 0.94
+	position_panel.anchor_right = 0.96
+	position_panel.anchor_bottom = 0.94
+	# Grow backwards
+	position_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN # Left
+	position_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN   # Up
+	
+	position_panel.custom_minimum_size = Vector2(160, 60)
+	position_panel.position -= Vector2(160, 60) # Manual offset to ensure it's visible if anchors behave strictly
+	
+	# Style
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.45)
+	style.set_corner_radius_all(8)
+	position_panel.add_theme_stylebox_override("panel", style)
+	
+	add_child(position_panel)
+	
+	position_label = Label.new()
+	position_label.name = "PositionLabel"
+	position_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	position_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	position_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	position_label.add_theme_font_size_override("font_size", 28)
+	position_label.text = "POS -/-"
+	position_panel.add_child(position_label)
+
+func _setup_aura_display():
+	aura_container = VBoxContainer.new()
+	aura_container.name = "AuraContainer"
+	aura_container.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	# Anchor: x=92%, y=50%
+	aura_container.anchor_left = 0.92
+	aura_container.anchor_top = 0.5
+	aura_container.anchor_right = 0.92
+	aura_container.anchor_bottom = 0.5
+	aura_container.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	aura_container.grow_vertical = Control.GROW_DIRECTION_BOTH
+	
+	aura_container.custom_minimum_size = Vector2(120, 100)
+	aura_container.position.x -= 120 # Offset
+	aura_container.position.y -= 50  # Center
+	
+	add_child(aura_container)
+	
+	aura_label = Label.new()
+	aura_label.text = "AURA"
+	aura_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	aura_label.add_theme_font_size_override("font_size", 26)
+	aura_container.add_child(aura_label)
+	
+	aura_value = Label.new()
+	aura_value.text = "0"
+	aura_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	aura_value.add_theme_font_size_override("font_size", 32)
+	aura_value.modulate = Color(0, 0.96, 1.0) # Cyan
+	aura_container.add_child(aura_value)
+
+func _setup_timer_display():
+	var container = VBoxContainer.new()
+	container.name = "TimerContainer"
+	container.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	# Anchor: x=93%, y=6%
+	container.anchor_left = 0.93
+	container.anchor_top = 0.06
+	container.anchor_right = 0.93
+	container.anchor_bottom = 0.06
+	container.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	
+	container.position.x -= 200 # Approx width
+	
+	add_child(container)
+	
+	timer_label = Label.new()
+	timer_label.text = "00:00.00"
+	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	timer_label.add_theme_font_size_override("font_size", 30)
+	container.add_child(timer_label)
+	
+	best_time_label = Label.new()
+	best_time_label.text = "BEST --:--.--"
+	best_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	best_time_label.add_theme_font_size_override("font_size", 18)
+	best_time_label.modulate = Color(1, 1, 1, 0.7)
+	container.add_child(best_time_label)
+
+func _setup_minimap_display():
+	minimap_panel = Panel.new()
+	minimap_panel.name = "MinimapPanel"
+	minimap_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	# Anchor: x=6%, y=6%
+	minimap_panel.anchor_left = 0.06
+	minimap_panel.anchor_top = 0.06
+	minimap_panel.anchor_right = 0.06
+	minimap_panel.anchor_bottom = 0.06
+	minimap_panel.custom_minimum_size = Vector2(150, 150)
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.5)
+	style.set_corner_radius_all(8)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(1, 1, 1, 0.3)
+	minimap_panel.add_theme_stylebox_override("panel", style)
+	
+	add_child(minimap_panel)
+	
+	var map_label = Label.new()
+	map_label.text = "MINIMAP"
+	map_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	map_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	map_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	map_label.size = Vector2(150, 150)
+	map_label.modulate = Color(1, 1, 1, 0.3)
+	minimap_panel.add_child(map_label)
+
+func _get_or_create_flash_rect():
+	flash_rect = ColorRect.new()
+	flash_rect.name = "FlashRect"
+	flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	flash_rect.color = Color(0, 0, 0, 0)
+	flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(flash_rect)
+
+func _setup_countdown_display():
+	countdown_panel = Control.new()
+	countdown_panel.name = "CountdownPanel"
+	countdown_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	countdown_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	countdown_panel.visible = false
+	add_child(countdown_panel)
+	
+	countdown_label = Label.new()
+	countdown_label.name = "CountdownLabel"
+	countdown_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	countdown_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	countdown_label.add_theme_font_size_override("font_size", 120)
+	countdown_panel.add_child(countdown_label)
+
+# --- Updates ---
+
+func update_rank(rank: int, total: int):
+	# Update text
+	position_label.text = "POS %d/%d" % [rank, total]
+	
+	# Logic for flash
+	if last_rank != -1 and rank != last_rank:
+		if rank < last_rank:
+			# Gained position (e.g. 2nd -> 1st)
+			_trigger_flash(Color("#00FF6A"), 0.3)
+		elif rank > last_rank:
+			# Lost position (e.g. 1st -> 2nd)
+			_trigger_flash(Color("#FF4D4D"), 0.3)
+			
+	last_rank = rank
+	total_racers = total
+
+func update_aura(current_points: float):
+	aura_value.text = str(int(current_points))
+
+func pulse_aura_display():
+	var tween = create_tween()
+	aura_value.scale = Vector2(1.5, 1.5)
+	tween.tween_property(aura_value, "scale", Vector2(1.0, 1.0), 0.3)\
+		.set_trans(Tween.TRANS_ELASTIC)\
+		.set_ease(Tween.EASE_OUT)
+
+func update_timer_display(time_sec: float):
+	timer_label.text = _format_time(time_sec)
+
+func update_best_time_display(time_sec: float):
+	if time_sec <= 0:
+		best_time_label.text = "BEST --:--.--"
+	else:
+		best_time_label.text = "BEST " + _format_time(time_sec)
+
+func _format_time(time_sec: float) -> String:
+	var m = int(time_sec / 60)
+	var s = int(time_sec) % 60
+	var ms = int((time_sec - int(time_sec)) * 100)
+	return "%02d:%02d.%02d" % [m, s, ms]
+
+func show_countdown_step(step: Variant):
+	if !countdown_panel: return
+	
+	countdown_panel.visible = true
+	countdown_label.text = str(step)
+	
+	var is_go = str(step) == "GO"
+	var color = Color("#00FF6A") if is_go else Color("#FFD34D")
+	countdown_label.modulate = color
+	
+	# Pulse animation
+	var tween = create_tween()
+	countdown_label.scale = Vector2(0.5, 0.5)
+	tween.tween_property(countdown_label, "scale", Vector2(1.2, 1.2), 0.5)\
+		.set_trans(Tween.TRANS_ELASTIC)\
+		.set_ease(Tween.EASE_OUT)
+
+func hide_countdown():
+	if countdown_panel:
+		countdown_panel.visible = false
+
+func show_race_complete(winner_name: String, final_pos: int, total: int):
+	var panel = Panel.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.modulate = Color(0, 0, 0, 0.8)
+	add_child(panel)
+	
+	var vbox = VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(vbox)
+	
+	var label = Label.new()
+	label.text = "RACE FINISHED"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 64)
+	vbox.add_child(label)
+	
+	var sublabel = Label.new()
+	sublabel.text = "Winner: %s" % winner_name
+	sublabel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sublabel.add_theme_font_size_override("font_size", 32)
+	vbox.add_child(sublabel)
+	
+	var poslabel = Label.new()
+	poslabel.text = "Your Place: %d / %d" % [final_pos, total]
+	poslabel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	poslabel.add_theme_font_size_override("font_size", 28)
+	vbox.add_child(poslabel)
+
+func show_aura_bonus(amount: int):
+	# Create a floating label for bonus
+	var label = Label.new()
+	label.text = "+%d" % amount
+	label.modulate = Color(0, 1, 0) # Green
+	label.add_theme_font_size_override("font_size", 32)
+	
+	# Add directly to hud so it's on top, position near aura container
+	add_child(label)
+	# Default position near aura container (right-center)
+	# Aura container is at x=92%, y=50%
+	# We'll set a safe position
+	label.position = Vector2(get_viewport().size.x * 0.9, get_viewport().size.y * 0.45)
+	
+	var tween = create_tween()
+	tween.tween_property(label, "position:y", label.position.y - 80, 1.5)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.5)
+	tween.tween_callback(label.queue_free)
+
+func _trigger_flash(color: Color, duration: float):
+	var flash = flash_rect.duplicate()
+	add_child(flash)
+	flash.color = color
+	flash.color.a = 0.3
+	
+	var tween = create_tween()
+	tween.tween_property(flash, "color:a", 0.0, duration)
+	tween.tween_callback(flash.queue_free)

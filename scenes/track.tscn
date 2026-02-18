@@ -1,0 +1,105 @@
+[gd_scene load_steps=8 format=3 uid="uid://track_scene"]
+
+[ext_resource type="Script" path="res://scripts/track.gd" id="1"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1"]
+size = Vector3(100, 20, 100)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(100, 20, 100)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2"]
+size = Vector3(10, 2, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2"]
+size = Vector3(10, 2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_3"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1"]
+albedo_color = Color(1, 0.5, 0, 1)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Ground" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("BoxMesh_1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("BoxShape3D_1")
+
+[node name="Checkpoints" type="Node3D" parent="."]
+
+[node name="StartFinishLine" type="Area3D" parent="Checkpoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+collision_layer = 2
+collision_mask = 1
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Checkpoints/StartFinishLine"]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, 0, 0)
+mesh = SubResource("BoxMesh_3")
+material_override = SubResource("StandardMaterial3D_1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Checkpoints/StartFinishLine"]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, 0, 0)
+shape = SubResource("BoxShape3D_2")
+
+[node name="Checkpoint1" type="Area3D" parent="Checkpoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1, 0)
+collision_layer = 2
+collision_mask = 1
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Checkpoints/Checkpoint1"]
+transform = Transform3D(0.5, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0)
+mesh = SubResource("BoxMesh_3")
+material_override = SubResource("StandardMaterial3D_1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Checkpoints/Checkpoint1"]
+transform = Transform3D(0.5, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0)
+shape = SubResource("BoxShape3D_2")
+
+[node name="Checkpoint2" type="Area3D" parent="Checkpoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 15)
+collision_layer = 2
+collision_mask = 1
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Checkpoints/Checkpoint2"]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, 0, 0)
+mesh = SubResource("BoxMesh_3")
+material_override = SubResource("StandardMaterial3D_1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Checkpoints/Checkpoint2"]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, 0, 0)
+shape = SubResource("BoxShape3D_2")
+
+[node name="Checkpoint3" type="Area3D" parent="Checkpoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 1, 0)
+collision_layer = 2
+collision_mask = 1
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Checkpoints/Checkpoint3"]
+transform = Transform3D(0.5, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0)
+mesh = SubResource("BoxMesh_3")
+material_override = SubResource("StandardMaterial3D_1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Checkpoints/Checkpoint3"]
+transform = Transform3D(0.5, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0)
+shape = SubResource("BoxShape3D_2")
+
+[node name="Checkpoint4" type="Area3D" parent="Checkpoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -15)
+collision_layer = 2
+collision_mask = 1
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Checkpoints/Checkpoint4"]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, 0, 0)
+mesh = SubResource("BoxMesh_3")
+material_override = SubResource("StandardMaterial3D_1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Checkpoints/Checkpoint4"]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, 0, 0)
+shape = SubResource("BoxShape3D_2")
