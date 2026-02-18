@@ -42,7 +42,20 @@ var early_input_buffer: Dictionary = {} # Stores last pressed state of actions
 signal speed_changed(speed_kmh: float)
 
 func _ready():
-	pass
+	# Detach camera mount from car parent to allow smooth independent movement
+	if camera_mount:
+		camera_mount.set_as_top_level(true)
+		
+		# Snap camera to initial position to avoid "white glitch" (camera starting inside car)
+		# We need to force update the camera position immediately before the first frame
+		var car_transform = global_transform
+		var car_forward = -car_transform.basis.z
+		var target_position = car_transform.origin - car_forward * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
+		camera_mount.global_position = target_position
+		
+		if camera:
+			var look_target = car_transform.origin + car_forward * 20.0
+			camera.look_at(look_target, Vector3.UP)
 
 func _physics_process(delta):
 	var velocity = linear_velocity

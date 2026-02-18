@@ -199,7 +199,7 @@ func _setup_minimap_display():
 func init_minimap_markers(bot_colors: Array):
 	# Player Marker
 	player_map_marker = ColorRect.new()
-	player_map_marker.color = Color(0.0, 1.0, 0.0) # Bright Green
+	player_map_marker.color = Color(1.0, 1.0, 1.0) # White
 	player_map_marker.custom_minimum_size = Vector2(12, 12)
 	# Center pivot for easier positioning
 	player_map_marker.pivot_offset = Vector2(6, 6)
