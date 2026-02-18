@@ -229,6 +229,9 @@ func _setup_bots() -> void:
 		# Let's make it wider and purely random.
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
+	
+	if hud:
+		hud.init_minimap_markers(bot_colors)
 
 func _setup_aura_orbs() -> void:
 	# Spawn aura orbs along the track
@@ -397,6 +400,13 @@ func _physics_process(delta: float) -> void:
 			if hud:
 				hud.update_rank(player_rank, NUM_BOTS + 1)
 				hud.update_aura(aura_meter)
+				
+				# Minimap update
+				var player_prog = player_position / TRACK_LENGTH
+				var bot_progs = []
+				for pos in bot_positions:
+					bot_progs.append(pos / TRACK_LENGTH)
+				hud.update_minimap(player_prog, bot_progs)
 
 # ============================================================================
 # AURA SYSTEM

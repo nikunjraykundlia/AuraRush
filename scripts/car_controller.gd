@@ -1,7 +1,7 @@
 extends VehicleBody3D
 
 # Car physics parameters
-const MAX_ENGINE_FORCE = 67000.0
+const MAX_ENGINE_FORCE = 75000.0
 const MAX_BRAKE_FORCE = 5000.0
 const MAX_REVERSE_FORCE = 15000.0
 const MAX_STEER_ANGLE = 0.35

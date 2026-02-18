@@ -148,37 +148,91 @@ func _setup_timer_display():
 	best_time_label.modulate = Color(1, 1, 1, 0.7)
 	container.add_child(best_time_label)
 
+var player_map_marker: ColorRect
+var bot_map_markers: Array[ColorRect] = []
+
 func _setup_minimap_display():
 	minimap_panel = Panel.new()
 	minimap_panel.name = "MinimapPanel"
 	minimap_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	# Anchor: x=6%, y=6%
-	minimap_panel.anchor_left = 0.06
-	minimap_panel.anchor_top = 0.06
-	minimap_panel.anchor_right = 0.06
-	minimap_panel.anchor_bottom = 0.06
-	minimap_panel.custom_minimum_size = Vector2(150, 150)
+	minimap_panel.anchor_left = 0.02
+	minimap_panel.anchor_top = 0.04
+	minimap_panel.anchor_right = 0.02
+	minimap_panel.anchor_bottom = 0.04
+	minimap_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	minimap_panel.grow_vertical = Control.GROW_DIRECTION_END
+	minimap_panel.custom_minimum_size = Vector2(40, 200) # Tall vertical strip
+	minimap_panel.position = Vector2(30, 30) # Manual offset
 	
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.5)
-	style.set_corner_radius_all(8)
+	style.bg_color = Color(0, 0, 0, 0.6)
+	style.set_corner_radius_all(4)
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
 	style.border_width_bottom = 2
-	style.border_color = Color(1, 1, 1, 0.3)
+	style.border_color = Color(1, 1, 1, 0.4)
 	minimap_panel.add_theme_stylebox_override("panel", style)
 	
 	add_child(minimap_panel)
 	
-	var map_label = Label.new()
-	map_label.text = "MINIMAP"
-	map_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	map_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	map_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	map_label.size = Vector2(150, 150)
-	map_label.modulate = Color(1, 1, 1, 0.3)
-	minimap_panel.add_child(map_label)
+	# Track Lane (Visual)
+	var track_line = ColorRect.new()
+	track_line.color = Color(1, 1, 1, 0.2)
+	track_line.custom_minimum_size = Vector2(4, 180)
+	track_line.position = Vector2(18, 10) # Center of panel
+	minimap_panel.add_child(track_line)
+	
+	# Start/Finish Lines
+	var start_line = ColorRect.new()
+	start_line.color = Color(1, 1, 1, 0.5)
+	start_line.custom_minimum_size = Vector2(20, 2)
+	start_line.position = Vector2(10, 190)
+	minimap_panel.add_child(start_line)
+	
+	var finish_line = ColorRect.new()
+	finish_line.color = Color(1, 1, 1, 0.5)
+	finish_line.custom_minimum_size = Vector2(20, 2)
+	finish_line.position = Vector2(10, 10)
+	minimap_panel.add_child(finish_line)
+
+func init_minimap_markers(bot_colors: Array):
+	# Player Marker
+	player_map_marker = ColorRect.new()
+	player_map_marker.color = Color(0.0, 1.0, 0.0) # Bright Green
+	player_map_marker.custom_minimum_size = Vector2(12, 12)
+	# Center pivot for easier positioning
+	player_map_marker.pivot_offset = Vector2(6, 6)
+	minimap_panel.add_child(player_map_marker)
+	
+	# Bot Markers
+	for color in bot_colors:
+		var marker = ColorRect.new()
+		marker.color = color
+		marker.custom_minimum_size = Vector2(10, 10)
+		marker.pivot_offset = Vector2(5, 5)
+		minimap_panel.add_child(marker)
+		bot_map_markers.append(marker)
+
+func update_minimap(player_prog: float, bot_progs: Array):
+	# Map height is 200, but use usable area 10 to 190 (180 height)
+	var map_height = 180.0
+	var start_y = 190.0
+	
+	# Player
+	# Clamp progress 0 to 1
+	var p_prog = clampf(player_prog, 0.0, 1.0)
+	var p_y = start_y - (p_prog * map_height)
+	player_map_marker.position = Vector2(14, p_y - 6) # x centered (40 width -> 20 center - 6 half size = 14)
+	
+	# Bots
+	for i in range(len(bot_map_markers)):
+		if i < len(bot_progs):
+			var b_prog = clampf(bot_progs[i], 0.0, 1.0)
+			var b_y = start_y - (b_prog * map_height)
+			# Offset bots slightly based on index to avoid total overlap if speeds are same
+			var x_offset = (i % 2) * 6 - 3 
+			bot_map_markers[i].position = Vector2(15 + x_offset, b_y - 5)
 
 func _get_or_create_flash_rect():
 	flash_rect = ColorRect.new()
