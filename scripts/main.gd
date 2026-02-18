@@ -126,6 +126,18 @@ func _ready() -> void:
 		hud.update_aura(aura_meter)
 		hud.update_rank(1, NUM_BOTS + 1)
 	
+	# Apply Neon Shader to Player Car
+	# Construct Neon Sports Car Visuals for Player
+	var player_mesh_node = player_body.get_node_or_null("MeshInstance3D")
+	if player_mesh_node:
+		player_mesh_node.queue_free() # Remove the placeholder box
+		
+		# Create new visuals container
+		var new_visuals = _construct_car_visuals(Color(0.0, 0.96, 1.0))
+		new_visuals.name = "CarVisuals"
+		new_visuals.position = Vector3(0, 0.2, 0) # Adjust height to match wheel axle
+		player_body.add_child(new_visuals)
+	
 	# Allow a momentary delay before countdown starts so scene loads fully
 	await get_tree().create_timer(1.0).timeout
 	_start_countdown()
@@ -162,7 +174,7 @@ func _setup_track() -> void:
 			divider.mesh.size = Vector3(0.15, 0.6, segment_length * 0.4)
 			var lane_x := -TRACK_WIDTH / 2.0 + lane * LANE_WIDTH
 			divider.position = Vector3(lane_x, 0.3, float(i) * segment_length)
-			divider.mesh.material = _create_neon_material(Color(1.0, 1.0, 1.0, 0.6))
+			divider.mesh.material = _create_simple_neon_material(Color(1.0, 1.0, 1.0, 0.6))
 			add_child(divider)
 		
 		# Track edge barriers (neon)
@@ -187,7 +199,7 @@ func _setup_track() -> void:
 			barrier_mesh.mesh = BoxMesh.new()
 			barrier_mesh.mesh.size = Vector3(0.5, 1.5, segment_length)
 			var barrier_color := Color(0.0, 0.96, 1.0) if side == -1 else Color(1.0, 0.15, 0.49)
-			barrier_mesh.mesh.material = _create_neon_material(barrier_color)
+			barrier_mesh.mesh.material = _create_simple_neon_material(barrier_color)
 			barrier_body.add_child(barrier_mesh)
 
 	# End Wall at the very end of the track
@@ -204,7 +216,7 @@ func _setup_track() -> void:
 	var em = MeshInstance3D.new()
 	em.mesh = BoxMesh.new()
 	em.mesh.size = Vector3(TRACK_WIDTH * 3, 40, 5)
-	em.mesh.material = _create_neon_material(Color(1, 0, 0)) # Red
+	em.mesh.material = _create_simple_neon_material(Color(1, 0, 0)) # Red
 	e_body.add_child(em)
 
 func _setup_bots() -> void:
@@ -230,12 +242,14 @@ func _setup_bots() -> void:
 		add_child(bot)
 		bot_bodies.append(bot)
 		
-		var bot_mesh := MeshInstance3D.new()
-		bot_mesh.mesh = BoxMesh.new()
-		bot_mesh.mesh.size = Vector3(2.0, 1.0, 4.0)
-		bot_mesh.mesh.material = _create_neon_material(bot_colors[i])
-		bot.add_child(bot_mesh)
-		bot_meshes.append(bot_mesh)
+		# Construct procedural car visuals
+		var bot_visuals = _construct_car_visuals(bot_colors[i])
+		bot_visuals.position = Vector3(0, 0, 0) # Centered on rigid body
+		bot.add_child(bot_visuals)
+		
+		# We don't need to track bot_meshes array as strictly if we aren't changing colors dynamically later
+		# But if needed, we can store the root node
+		# bot_meshes.append(bot_visuals)
 		
 		# Bot collision
 		var collision := CollisionShape3D.new()
@@ -284,18 +298,57 @@ func _setup_aura_orbs() -> void:
 # MATERIALS
 # ============================================================================
 
-func _create_track_material() -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.12, 0.12, 0.18)
-	mat.roughness = 0.8
+const NEON_CAR_SHADER = """
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
+
+uniform vec3 albedo_color : source_color;
+uniform float emission_strength : hint_range(0.0, 20.0) = 3.0; // Increased punch
+uniform float metallic : hint_range(0.0, 1.0) = 0.9;
+uniform float roughness : hint_range(0.0, 1.0) = 0.1;
+
+void fragment() {
+	// Dark metallic body base
+	vec3 body_color = albedo_color * 0.05; 
+	ALBEDO = body_color;
+	METALLIC = metallic;
+	ROUGHNESS = roughness;
+	
+	// Fresnel Edge Glow (The "Neon" look)
+	float fresnel = pow(1.0 - dot(NORMAL, VIEW), 2.5);
+	vec3 edge_glow = albedo_color * fresnel * emission_strength;
+	
+	// Pulsating inner core effect (subtle)
+	float pulse = 0.5 + 0.5 * sin(TIME * 3.0);
+	vec3 inner_glow = albedo_color * 0.2 * pulse;
+	
+	EMISSION = edge_glow + inner_glow;
+}
+"""
+
+func _create_neon_material(color: Color) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	var shader = Shader.new()
+	shader.code = NEON_CAR_SHADER
+	mat.shader = shader
+	mat.set_shader_parameter("albedo_color", Vector3(color.r, color.g, color.b))
+	mat.set_shader_parameter("emission_strength", 4.0)
 	return mat
 
-func _create_neon_material(color: Color) -> StandardMaterial3D:
+func _create_simple_neon_material(color: Color) -> StandardMaterial3D:
+	# Fallback/Simple material if needed, or for static objects like barriers
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.emission_enabled = true
 	mat.emission = color
 	mat.emission_energy_multiplier = 2.0
+	return mat
+
+func _create_track_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.05, 0.05, 0.08) # Darker track to pop neon
+	mat.roughness = 0.6
+	mat.metallic = 0.3
 	return mat
 
 func _create_aura_orb_material() -> StandardMaterial3D:
@@ -306,6 +359,10 @@ func _create_aura_orb_material() -> StandardMaterial3D:
 	mat.emission_energy_multiplier = 3.0
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	return mat
+
+# Renamed original neon material function to distinguish usage
+# _create_neon_material is now the specialized Car Shader
+
 
 # ============================================================================
 # COUNTDOWN SYSTEM
@@ -689,4 +746,51 @@ func _lane_to_x(lane: int) -> float:
 func _x_to_lane(x: float) -> int:
 	# Convert X position to lane index
 	var normalized := (x + TRACK_WIDTH / 2.0) / TRACK_WIDTH
-	return clampi(int(normalized * NUM_LANES), 0, NUM_LANES - 1)
+func _construct_car_visuals(color: Color) -> Node3D:
+	var root = Node3D.new()
+	var material = _create_neon_material(color)
+	
+	# 1. Main Chassis (Lower Body)
+	var chassis = MeshInstance3D.new()
+	chassis.mesh = BoxMesh.new()
+	chassis.mesh.size = Vector3(1.9, 0.5, 4.4) # Wide and long
+	chassis.position = Vector3(0, 0.25, 0)
+	chassis.mesh.material = material
+	root.add_child(chassis)
+	
+	# 2. Cabin (Upper Body) - Set back
+	var cabin = MeshInstance3D.new()
+	cabin.mesh = BoxMesh.new()
+	cabin.mesh.size = Vector3(1.4, 0.6, 2.0)
+	cabin.position = Vector3(0, 0.8, -0.4) # Moved up and slightly back
+	cabin.mesh.material = material
+	root.add_child(cabin)
+	
+	# 3. Rear Spoiler Wing
+	var spoiler = MeshInstance3D.new()
+	spoiler.mesh = BoxMesh.new()
+	spoiler.mesh.size = Vector3(2.2, 0.1, 0.6) # Wide wing
+	spoiler.position = Vector3(0, 1.1, -1.8) # High and rear
+	spoiler.mesh.material = material
+	root.add_child(spoiler)
+	
+	# 4. Spoiler Struts
+	for x_pos in [-0.8, 0.8]:
+		var strut = MeshInstance3D.new()
+		strut.mesh = BoxMesh.new()
+		strut.mesh.size = Vector3(0.2, 0.6, 0.2)
+		strut.position = Vector3(x_pos, 0.8, -1.8)
+		strut.mesh.material = material
+		root.add_child(strut)
+		
+	# 5. Side Skirts / Fenders (Widening the look)
+	for x_side in [-1.0, 1.0]:
+		var skirt = MeshInstance3D.new()
+		skirt.mesh = BoxMesh.new()
+		skirt.mesh.size = Vector3(0.3, 0.4, 3.0)
+		skirt.position = Vector3(x_side, 0.25, 0)
+		skirt.mesh.material = material
+		root.add_child(skirt)
+	
+	return root
+
