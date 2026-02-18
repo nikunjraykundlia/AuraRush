@@ -1,8 +1,8 @@
 extends VehicleBody3D
 
 # Car physics parameters
-const MAX_ENGINE_FORCE = 40000.0
-const MAX_BRAKE_FORCE = 20000.0
+const MAX_ENGINE_FORCE = 80000.0
+const MAX_BRAKE_FORCE = 5000.0
 const MAX_REVERSE_FORCE = 15000.0
 const MAX_STEER_ANGLE = 0.35
 const STEER_SPEED = 2.5
@@ -99,9 +99,11 @@ func handle_input(delta):
 	
 	if brake_input_val > 0:
 		if current_speed_kmh > 5.0:
-			engine_force = -throttle_input * MAX_ENGINE_FORCE
+			engine_force = 0
+			# Apply brake proportional to input, but smoother
 			brake = brake_input_val * MAX_BRAKE_FORCE
 		else:
+			# Reverse logic
 			engine_force = brake_input_val * MAX_REVERSE_FORCE
 			brake = 0
 	else:

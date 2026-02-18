@@ -165,13 +165,22 @@ func _setup_track() -> void:
 		
 		# Track edge barriers (neon)
 		for side in [-1, 1]:
-			var barrier := MeshInstance3D.new()
-			barrier.mesh = BoxMesh.new()
-			barrier.mesh.size = Vector3(0.5, 1.5, segment_length)
-			barrier.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.25), 0.75, float(i) * segment_length)
+			var barrier_body := StaticBody3D.new()
+			barrier_body.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.25), 0.75, float(i) * segment_length)
+			add_child(barrier_body)
+			
+			var barrier_col := CollisionShape3D.new()
+			var barrier_shape := BoxShape3D.new()
+			barrier_shape.size = Vector3(0.5, 1.5, segment_length)
+			barrier_col.shape = barrier_shape
+			barrier_body.add_child(barrier_col)
+			
+			var barrier_mesh := MeshInstance3D.new()
+			barrier_mesh.mesh = BoxMesh.new()
+			barrier_mesh.mesh.size = Vector3(0.5, 1.5, segment_length)
 			var barrier_color := Color(0.0, 0.96, 1.0) if side == -1 else Color(1.0, 0.15, 0.49)
-			barrier.mesh.material = _create_neon_material(barrier_color)
-			add_child(barrier)
+			barrier_mesh.mesh.material = _create_neon_material(barrier_color)
+			barrier_body.add_child(barrier_mesh)
 
 func _setup_bots() -> void:
 	var bot_colors: Array[Color] = [
