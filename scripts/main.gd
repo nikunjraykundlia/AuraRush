@@ -167,6 +167,12 @@ func _setup_track() -> void:
 		# Track edge barriers (neon)
 		for side in [-1, 1]:
 			var barrier_body := StaticBody3D.new()
+			# Add frictionless material to prevent sticking
+			var friction_mat := PhysicsMaterial.new()
+			friction_mat.friction = 0.0
+			friction_mat.bounce = 0.0
+			barrier_body.physics_material_override = friction_mat
+			
 			barrier_body.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.25), 0.75, float(i) * segment_length)
 			add_child(barrier_body)
 			
