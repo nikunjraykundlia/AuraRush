@@ -85,5 +85,5 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 
 ## 📜 Credits
 
-Developed by **Nikunj Raykundlia**.
+Developed by **Nikunj Raykundlia**
 Built with [Godot Engine](https://godotengine.org/)
