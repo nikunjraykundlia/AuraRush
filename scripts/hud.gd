@@ -323,33 +323,79 @@ func hide_countdown():
 		countdown_panel.visible = false
 
 func show_race_complete(winner_name: String, final_pos: int, total: int):
-	var panel = Panel.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.modulate = Color(0, 0, 0, 0.8)
-	add_child(panel)
+	# 1. Full screen dimmer
+	var overlay = ColorRect.new()
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.color = Color(0, 0, 0, 0.7)
+	add_child(overlay)
+	
+	# 2. Centered Results Box
+	var center_container = CenterContainer.new()
+	center_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center_container)
+	
+	var panel_container = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.15, 0.95)
+	style.border_width_left = 4
+	style.border_width_top = 4
+	style.border_width_right = 4
+	style.border_width_bottom = 4
+	style.border_color = Color(0.0, 0.96, 1.0) # Cyan border
+	style.set_corner_radius_all(10)
+	style.expand_margin_left = 20
+	style.expand_margin_right = 20
+	style.expand_margin_top = 20
+	style.expand_margin_bottom = 20
+	panel_container.add_theme_stylebox_override("panel", style)
+	center_container.add_child(panel_container)
 	
 	var vbox = VBoxContainer.new()
-	vbox.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	panel.add_child(vbox)
+	vbox.add_theme_constant_override("separation", 20)
+	panel_container.add_child(vbox)
 	
+	# Title
 	var label = Label.new()
 	label.text = "RACE FINISHED"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 64)
+	label.add_theme_color_override("font_color", Color.WHITE)
 	vbox.add_child(label)
 	
+	# Winner
 	var sublabel = Label.new()
-	sublabel.text = "Winner: %s" % winner_name
+	if winner_name == "Player":
+		sublabel.text = "YOU WON!"
+		sublabel.add_theme_color_override("font_color", Color.GREEN)
+	else:
+		sublabel.text = "Winner: %s" % winner_name
+		sublabel.add_theme_color_override("font_color", Color(1, 0.2, 0.2)) # Reddish
+	
 	sublabel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sublabel.add_theme_font_size_override("font_size", 32)
+	sublabel.add_theme_font_size_override("font_size", 48)
 	vbox.add_child(sublabel)
 	
+	# Rank
 	var poslabel = Label.new()
-	poslabel.text = "Your Place: %d / %d" % [final_pos, total]
+	poslabel.text = "Position: %d / %d" % [final_pos, total]
 	poslabel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	poslabel.add_theme_font_size_override("font_size", 28)
+	poslabel.add_theme_font_size_override("font_size", 36)
 	vbox.add_child(poslabel)
+	
+	# Best Time note
+	var time_label = Label.new()
+	time_label.text = "Check Best Time in HUD"
+	time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	time_label.add_theme_font_size_override("font_size", 24)
+	time_label.modulate = Color(1, 1, 1, 0.6)
+	vbox.add_child(time_label)
+	
+	# Animate in
+	panel_container.scale = Vector2(0, 0)
+	panel_container.pivot_offset = Vector2(200, 150) # Approx center
+	var tween = create_tween()
+	tween.tween_property(panel_container, "scale", Vector2(1, 1), 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func show_aura_bonus(amount: int):
 	# Create a floating label for bonus

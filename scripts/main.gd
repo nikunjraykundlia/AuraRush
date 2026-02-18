@@ -170,7 +170,7 @@ func _setup_track() -> void:
 			# Add frictionless material to prevent sticking
 			var friction_mat := PhysicsMaterial.new()
 			friction_mat.friction = 0.0
-			friction_mat.bounce = 0.0
+			friction_mat.bounce = 0.5
 			barrier_body.physics_material_override = friction_mat
 			
 			barrier_body.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.25), 0.75, float(i) * segment_length)
@@ -188,6 +188,23 @@ func _setup_track() -> void:
 			var barrier_color := Color(0.0, 0.96, 1.0) if side == -1 else Color(1.0, 0.15, 0.49)
 			barrier_mesh.mesh.material = _create_neon_material(barrier_color)
 			barrier_body.add_child(barrier_mesh)
+
+	# End Wall at the very end of the track
+	var end_z = num_segments * segment_length
+	var e_body = StaticBody3D.new()
+	e_body.position = Vector3(0, 10, end_z)
+	add_child(e_body)
+	
+	var ec = CollisionShape3D.new()
+	ec.shape = BoxShape3D.new()
+	ec.shape.size = Vector3(TRACK_WIDTH * 3, 40, 5)
+	e_body.add_child(ec)
+	
+	var em = MeshInstance3D.new()
+	em.mesh = BoxMesh.new()
+	em.mesh.size = Vector3(TRACK_WIDTH * 3, 40, 5)
+	em.mesh.material = _create_neon_material(Color(1, 0, 0)) # Red
+	e_body.add_child(em)
 
 func _setup_bots() -> void:
 	var bot_colors: Array[Color] = [
@@ -413,6 +430,44 @@ func _physics_process(delta: float) -> void:
 				for pos in bot_positions:
 					bot_progs.append(pos / TRACK_LENGTH)
 				hud.update_minimap(player_prog, bot_progs)
+		
+		_check_player_fall_respawn()
+
+func _check_player_fall_respawn() -> void:
+	if not player_body: return
+	
+	# If player falls below -10.0 (track is around -10 or 0 usually, safe buffer)
+	if player_body.global_position.y < -15.0:
+		_respawn_player()
+
+func _respawn_player() -> void:
+	if not player_body: return
+	
+	# Current track distance
+	var current_z = player_body.global_position.z
+	
+	# Respawn slightly back or at same Z, centered on track, slightly above
+	var safe_z = current_z
+	var safe_x = 0.0 # Center lane
+	
+	# Reset physics
+	player_body.linear_velocity = Vector3.ZERO
+	player_body.angular_velocity = Vector3.ZERO
+	player_body.global_position = Vector3(safe_x, 2.0, safe_z)
+	player_body.global_rotation = Vector3.ZERO
+	
+	# Ensure looking forward (forward is -Z in Godot usually, but track goes +Z?
+	# Let's check rotation in setup: player_body.rotation_degrees.y = 180.0
+	# So car faces +Z if model is -Z forward.
+	# The setup says: player_body.rotation_degrees.y = 180.0
+	# And track generates +Z segments.
+	player_body.rotation_degrees = Vector3(0, 180, 0)
+	
+	# Penalty? maybe flash screen or lose speed (implied by velocity reset)
+	if hud:
+		hud.show_countdown_step("!") # Quick visual indicator
+		# Optionally hide it after a moment or let usage clear it
+		get_tree().create_timer(1.0).timeout.connect(func(): hud.hide_countdown())
 
 # ============================================================================
 # AURA SYSTEM

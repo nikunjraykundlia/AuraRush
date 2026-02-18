@@ -21,7 +21,7 @@ const CAMERA_DISTANCE = 8.0
 var current_speed_kmh: float = 0.0
 var steer_target: float = 0.0
 var steer_angle: float = 0.0
-var can_jump: bool = true
+var is_grounded: bool = true   # Updated via RayCast
 
 # Camera variables
 var camera_rotation_x: float = 0.0
@@ -31,6 +31,7 @@ var camera_mode: String = "follow"
 # References
 @onready var camera_mount = $CameraMount
 @onready var camera = $CameraMount/Camera3D
+var ground_ray: RayCast3D
 
 # Track progress
 var distance_traveled: float = 0.0
@@ -57,6 +58,13 @@ func _ready():
 			var look_target = car_transform.origin + car_forward * 20.0
 			camera.look_at(look_target, Vector3.UP)
 
+	# Setup Ground Raycast
+	ground_ray = RayCast3D.new()
+	ground_ray.position = Vector3(0, 0.5, 0) # Start slightly above center
+	ground_ray.target_position = Vector3(0, -1.0, 0) # Cast down
+	ground_ray.enabled = true
+	add_child(ground_ray)
+
 func _physics_process(delta):
 	var velocity = linear_velocity
 	current_speed_kmh = velocity.length() * 3.6
@@ -69,9 +77,10 @@ func _physics_process(delta):
 	
 	emit_signal("speed_changed", current_speed_kmh)
 	
+	_check_grounded()
 	handle_input(delta)
 	update_camera(delta)
-	check_grounded()
+	_apply_air_stabilization(delta)
 
 func set_input_enabled(enabled: bool, flush_buffer: bool = false) -> void:
 	input_enabled = enabled
@@ -100,7 +109,13 @@ func handle_input(delta):
 		brake = MAX_BRAKE_FORCE # Hold brake while locked
 		steering = 0
 		return
-
+	
+	# --------------------------------------------------------------------------
+	# STEERING & GROUND HANDLING
+	# --------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
+	# STEERING
+	# --------------------------------------------------------------------------
 	var speed_factor = 1.0
 	if abs(current_speed_kmh) > HIGH_SPEED_THRESHOLD:
 		var speed_ratio = (abs(current_speed_kmh) - HIGH_SPEED_THRESHOLD) / HIGH_SPEED_THRESHOLD
@@ -110,6 +125,9 @@ func handle_input(delta):
 	steer_angle = lerp(steer_angle, steer_target, STEER_SPEED * delta)
 	steering = steer_angle
 	
+	# --------------------------------------------------------------------------
+	# ENGINE & BRAKES (Works on ground or air - wheels spin in air)
+	# --------------------------------------------------------------------------
 	if brake_input_val > 0:
 		if current_speed_kmh > 5.0:
 			engine_force = 0
@@ -120,12 +138,60 @@ func handle_input(delta):
 			engine_force = brake_input_val * MAX_REVERSE_FORCE
 			brake = 0
 	else:
+		# Forward
 		engine_force = -throttle_input * MAX_ENGINE_FORCE
 		brake = 0
 	
-	if jump_input and can_jump:
-		apply_central_impulse(Vector3.UP * JUMP_FORCE)
-		can_jump = false
+	# --------------------------------------------------------------------------
+	# AIR CONTROL (Additional mid-air stabilization/control)
+	# --------------------------------------------------------------------------
+	if not is_grounded:
+		# Allow mid-air rotation for landing
+		if steer_input != 0:
+			angular_velocity.y -= steer_input * delta * 2.0
+			# Bank slightly
+			angular_velocity.z -= steer_input * delta * 1.5
+
+	# --------------------------------------------------------------------------
+	# JUMP SYNCHRONIZATION
+	# --------------------------------------------------------------------------
+	if jump_input and is_grounded:
+		# Sync Jump Force with Speed
+		# Base jump + bonus for speed to maintain momentum feel
+		var speed_bonus = abs(current_speed_kmh) * 20.0 
+		var total_jump_force = JUMP_FORCE + speed_bonus
+		
+		# Cap it reasonable
+		total_jump_force = min(total_jump_force, 12000.0) 
+		
+		apply_central_impulse(Vector3.UP * total_jump_force)
+		is_grounded = false # Prevent double jumps immediately
+
+func _check_grounded():
+	# Raycast check is better than velocity
+	if ground_ray and ground_ray.is_colliding():
+		is_grounded = true
+	else:
+		# Fallback: if raycast misses but we are not moving vertically much, we might be grounded
+		# This helps if the raycast length (1.5m dowwn) is too short for some reason (suspension extension)
+		is_grounded = abs(linear_velocity.y) < 1.0
+
+func _apply_air_stabilization(delta):
+	if not is_grounded:
+		# Auto-stabilize pitch and roll to land flat
+		var current_rot = global_rotation
+		
+		# Dampen X (pitch) and Z (roll) rotation to prevent flipping
+		var target_x = 0.0
+		var target_z = 0.0
+		
+		# Apply corrective torque if we are tilting too much
+		# Simple proportional controller
+		var correction_x = -current_rot.x * 2000.0
+		var correction_z = -current_rot.z * 2000.0
+		
+		apply_torque(global_transform.basis.x * correction_x * delta)
+		apply_torque(global_transform.basis.z * correction_z * delta)
 
 func _input(event):
 	if event.is_action_pressed("toggle_camera"):
@@ -165,10 +231,6 @@ func update_camera(delta):
 		
 		var target_position = Vector3(0, 3, -6)
 		camera_mount.position = camera_mount.position.lerp(target_position, CAMERA_SMOOTH * delta)
-
-func check_grounded():
-	if abs(linear_velocity.y) < 0.5:
-		can_jump = true
 
 func reset_car():
 	global_transform.origin = Vector3(0, 2, 0)
