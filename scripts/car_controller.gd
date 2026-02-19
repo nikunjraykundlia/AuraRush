@@ -1,13 +1,13 @@
 extends VehicleBody3D
 
 # Car physics parameters
-const MAX_ENGINE_FORCE = 69000.0
+const MAX_ENGINE_FORCE = 47000.0      
 const MAX_BRAKE_FORCE = 5000.0
 const MAX_REVERSE_FORCE = 15000.0
 const MAX_STEER_ANGLE = 0.35
-const STEER_SPEED = 2.5
-const JUMP_FORCE = 6000.0
-const HIGH_SPEED_STEER_REDUCTION = 0.5
+const STEER_SPEED = 5.0              # Snappy steering response
+const JUMP_FORCE = 4000.0             # Lower base jump for smoother arcs
+const HIGH_SPEED_STEER_REDUCTION = 0.4
 const HIGH_SPEED_THRESHOLD = 80.0
 
 # Camera control
@@ -128,10 +128,7 @@ func handle_input(delta):
 		return
 	
 	# --------------------------------------------------------------------------
-	# STEERING & GROUND HANDLING
-	# --------------------------------------------------------------------------
-	# --------------------------------------------------------------------------
-	# STEERING
+	# STEERING - Responsive with progressive speed reduction
 	# --------------------------------------------------------------------------
 	var speed_factor = 1.0
 	if abs(current_speed_kmh) > HIGH_SPEED_THRESHOLD:
@@ -139,7 +136,12 @@ func handle_input(delta):
 		speed_factor = lerp(1.0, HIGH_SPEED_STEER_REDUCTION, min(speed_ratio, 1.0))
 	
 	steer_target = steer_input * MAX_STEER_ANGLE * speed_factor
-	steer_angle = lerp(steer_angle, steer_target, STEER_SPEED * delta)
+	# Snappy steering: fast interpolation toward target, instant center return
+	if abs(steer_input) < 0.1:
+		# Quick return to center when no input
+		steer_angle = lerp(steer_angle, 0.0, STEER_SPEED * 2.0 * delta)
+	else:
+		steer_angle = lerp(steer_angle, steer_target, STEER_SPEED * delta)
 	steering = steer_angle
 	
 	# --------------------------------------------------------------------------
@@ -173,15 +175,21 @@ func handle_input(delta):
 	# JUMP SYNCHRONIZATION
 	# --------------------------------------------------------------------------
 	if jump_input and is_grounded:
-		# Sync Jump Force with Speed
-		# Base jump + bonus for speed to maintain momentum feel
-		var speed_bonus = abs(current_speed_kmh) * 20.0 
+		# Smooth jump: gentle upward arc that scales mildly with speed
+		var speed_bonus = abs(current_speed_kmh) * 10.0  # Gentler scaling
 		var total_jump_force = JUMP_FORCE + speed_bonus
 		
-		# Cap it reasonable
-		total_jump_force = min(total_jump_force, 12000.0) 
+		# Cap so high-speed jumps don't launch into orbit
+		total_jump_force = min(total_jump_force, 8000.0)
 		
+		# Apply upward impulse
 		apply_central_impulse(Vector3.UP * total_jump_force)
+		
+		# Preserve forward momentum during jump for smooth arc
+		var forward_dir = -global_transform.basis.z
+		var forward_boost = abs(current_speed_kmh) * 5.0
+		apply_central_impulse(forward_dir * forward_boost)
+		
 		is_grounded = false # Prevent double jumps immediately
 
 func _check_grounded():
@@ -198,35 +206,38 @@ func _apply_air_stabilization(delta):
 		# Auto-stabilize pitch and roll to land flat
 		var current_rot = global_rotation
 		
-		# Dampen X (pitch) and Z (roll) rotation to prevent flipping
-		var target_x = 0.0
-		var target_z = 0.0
-		
 		# Apply corrective torque if we are tilting too much
-		# Simple proportional controller
 		var correction_x = -current_rot.x * 2000.0
 		var correction_z = -current_rot.z * 2000.0
 		
 		apply_torque(global_transform.basis.x * correction_x * delta)
 		apply_torque(global_transform.basis.z * correction_z * delta)
 
-func _dampen_wall_contact(delta):
-	# Reduce lateral (X) velocity when the car is near track edges to prevent
-	# harsh wall bouncing. Track width is 16m, edges at ±8.0, walls at ±8.25
-	var x_pos = abs(global_position.x)
+func _dampen_wall_contact(_delta):
+	# Absorb wall impacts: kill lateral velocity AND all spinning when near edges
+	# Track width is 16m, edges at ±8.0, walls at ±8.25
+	var x_pos = global_position.x
+	var abs_x = abs(x_pos)
 	var track_half_width = 8.0  # TRACK_WIDTH / 2.0
 	
-	if x_pos > track_half_width - 0.5:  # Within 0.5m of the wall
-		# Dampen lateral velocity significantly
-		var vel = linear_velocity
-		var lateral_speed = abs(vel.x)
+	if abs_x > track_half_width - 0.5:  # Within 0.5m of the wall
+		# 1. Kill lateral (X) velocity almost completely — wall absorbs the hit
+		linear_velocity.x *= 0.05  # Keep only 5%
 		
-		if lateral_speed > 1.0:
-			# Kill most of the lateral bounce - keep only 10% of it
-			var damping = 0.1
-			linear_velocity.x *= damping
-			# Also kill any angular velocity from the impact
-			angular_velocity *= 0.5
+		# 2. Kill ALL angular velocity — no spinning at all on wall contact
+		angular_velocity = Vector3.ZERO
+		
+		# 3. Force the yaw rotation to stay straight (facing forward)
+		# Smoothly correct any yaw deviation caused by the impact
+		var current_yaw = rotation_degrees.y
+		# The car should face 180 degrees (forward along +Z)
+		var yaw_error = wrapf(current_yaw - 180.0, -180.0, 180.0)
+		if abs(yaw_error) > 2.0:  # More than 2 degrees off
+			rotation_degrees.y = lerpf(current_yaw, 180.0, 0.3)
+		
+		# 4. Gentle push back toward center to prevent sticking to wall
+		var push_direction = -sign(x_pos)  # Push toward center
+		linear_velocity.x += push_direction * 2.0  # Gentle inward nudge
 
 func _input(event):
 	if event.is_action_pressed("toggle_camera"):

@@ -6,13 +6,13 @@ extends Node3D
 
 # --- Race Configuration ---
 const NUM_BOTS := 3
-const TRACK_LENGTH := 3000.0     # Total track distance in meters
+const TRACK_LENGTH := 3000.0          # Finish line distance in meters
 const TRACK_WIDTH := 16.0             # Lane width
 const NUM_LANES := 4                  # Number of driving lanes
 const LANE_WIDTH := TRACK_WIDTH / NUM_LANES
 
 # --- Aura System Configuration ---
-const AURA_MAX := 100.0
+const AURA_BOOST_REFERENCE := 100.0    # Reference point for boost strength scaling
 const AURA_BURST_DURATION := 3.0
 const AURA_BURST_SPEED_MULT := 1.45
 const AURA_ORB_VALUE := 5.0
@@ -21,6 +21,11 @@ const AURA_OVERTAKE_BONUS := 10.0
 const AURA_PROXIMITY_RATE := 1.0      # Aura per second near opponents
 const AURA_COLLISION_PENALTY := 15.0
 const AURA_OFFTRACK_DRAIN := 3.0      # Aura drain per second off-track
+
+# --- Aura Boost Configuration ---
+const AURA_BOOST_DURATION := 2.0      # Boost lasts 2 seconds
+const AURA_BOOST_BASE_FORCE := 15000.0  # Base boost force
+const AURA_BOOST_MAX_FORCE := 50000.0   # Max boost force at full aura
 
 # --- Player Physics ---
 const PLAYER_MAX_SPEED := 55.0
@@ -63,6 +68,12 @@ var aura_burst_active: bool = false
 var aura_burst_timer: float = 0.0
 var aura_streak_multiplier: float = 1.0
 var is_drifting: bool = false
+var highest_aura: float = 0.0          # All-time highest aura (persisted)
+
+# --- Aura Boost State ---
+var aura_boost_active: bool = false
+var aura_boost_timer: float = 0.0
+var aura_boost_force: float = 0.0     # Current boost force strength
 
 # --- Bot State ---
 var bot_bodies: Array[RigidBody3D] = []
@@ -72,6 +83,9 @@ var bot_lanes: Array[int] = []
 var bot_speeds: Array[float] = []
 var bot_lane_change_timers: Array[float] = []
 var bot_current_x: Array[float] = [] 
+var bot_wheel_nodes: Array = []        # Array of arrays - each bot has 4 wheel Node3Ds
+var bot_push_offset_x: Array[float] = []  # Collision push offset (X axis)
+var bot_push_offset_z: Array[float] = []  # Collision push offset (Z axis)
 var ai_active: bool = false
 
 # --- Race State ---
@@ -131,6 +145,7 @@ func _ready() -> void:
 	# Init HUD
 	if hud:
 		hud.update_best_time_display(best_time_2000m)
+		hud.update_highest_aura_display(highest_aura)
 		hud.update_aura(aura_meter)
 		hud.update_rank(1, NUM_BOTS + 1)
 	
@@ -229,14 +244,56 @@ func _setup_track() -> void:
 			barrier_mesh.mesh.material = _create_simple_neon_material(barrier_color)
 			barrier_body.add_child(barrier_mesh)
 
-	# End Wall at exactly 3100m (TRACK_LENGTH)
+	# ---- FINISH LINE at 3000m ----
+	# Visual finish line on the ground
+	var finish_line = MeshInstance3D.new()
+	finish_line.mesh = BoxMesh.new()
+	finish_line.mesh.size = Vector3(TRACK_WIDTH + 1.0, 0.15, 3.0)
+	finish_line.position = Vector3(0, 0.08, 3000.0)
+	
+	# Checkerboard-style neon finish material
+	var finish_mat = StandardMaterial3D.new()
+	finish_mat.albedo_color = Color(1.0, 1.0, 1.0)
+	finish_mat.emission_enabled = true
+	finish_mat.emission = Color(1.0, 1.0, 1.0)
+	finish_mat.emission_energy_multiplier = 5.0
+	finish_line.mesh.material = finish_mat
+	add_child(finish_line)
+	
+	# Finish line arch / gate (two pillars + top bar)
+	for side in [-1, 1]:
+		var pillar = MeshInstance3D.new()
+		pillar.mesh = BoxMesh.new()
+		pillar.mesh.size = Vector3(0.5, 8.0, 0.5)
+		pillar.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.5), 4.0, 3000.0)
+		pillar.mesh.material = _create_simple_neon_material(Color(1.0, 0.84, 0.0))  # Gold
+		add_child(pillar)
+	
+	var top_bar = MeshInstance3D.new()
+	top_bar.mesh = BoxMesh.new()
+	top_bar.mesh.size = Vector3(TRACK_WIDTH + 1.5, 0.5, 0.5)
+	top_bar.position = Vector3(0, 8.0, 3000.0)
+	top_bar.mesh.material = _create_simple_neon_material(Color(1.0, 0.84, 0.0))  # Gold
+	add_child(top_bar)
+	
+	# "FINISH" text indicators on each side
+	for side in [-1, 1]:
+		var flag = MeshInstance3D.new()
+		flag.mesh = BoxMesh.new()
+		flag.mesh.size = Vector3(0.1, 2.0, 1.5)
+		flag.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.8), 6.0, 3000.0)
+		var flag_mat = _create_simple_neon_material(Color(0.0, 1.0, 0.0))  # Green glow
+		flag.mesh.material = flag_mat
+		add_child(flag)
+
+	# End Wall at 3100m (stop wall beyond finish line)
 	var end_wall_body = StaticBody3D.new()
 	var end_wall_friction = PhysicsMaterial.new()
 	end_wall_friction.friction = 0.5
 	end_wall_friction.bounce = 0.0
 	end_wall_friction.absorbent = true
 	end_wall_body.physics_material_override = end_wall_friction
-	end_wall_body.position = Vector3(0, 10, 3100.0)  # Exactly 3100m
+	end_wall_body.position = Vector3(0, 10, 3100.0)  # Stop wall 100m past finish
 	add_child(end_wall_body)
 	
 	var ec = CollisionShape3D.new()
@@ -247,7 +304,7 @@ func _setup_track() -> void:
 	var em = MeshInstance3D.new()
 	em.mesh = BoxMesh.new()
 	em.mesh.size = Vector3(TRACK_WIDTH * 3, 40, 5)
-	em.mesh.material = _create_simple_neon_material(Color(1, 0, 0)) # Red
+	em.mesh.material = _create_simple_neon_material(Color(0.0, 0.96, 1.0)) # Cyan neon (matches edge wall)
 	end_wall_body.add_child(em)
 
 func _setup_bots() -> void:
@@ -259,16 +316,22 @@ func _setup_bots() -> void:
 	
 	for i in range(NUM_BOTS):
 		var bot := RigidBody3D.new()
-		bot.mass = 1200.0
+		bot.mass = 600.0           # Lighter than player so they get pushed
 		bot.name = "Bot%d" % i
 		bot.gravity_scale = 0.0
 		bot.lock_rotation = true
+		# Make bots not apply strong forces back to the player
+		var bot_phys = PhysicsMaterial.new()
+		bot_phys.friction = 0.0
+		bot_phys.bounce = 0.0
+		bot_phys.absorbent = true
+		bot.physics_material_override = bot_phys
 		
 		# Staggered start positions
 		var bot_lane := (i + 2) % NUM_LANES
 		var bot_x := _lane_to_x(bot_lane)
 		var bot_z := 5.0 - float(i + 1) * 3.0  # Staggered behind player relative to 0
-		bot.position = Vector3(bot_x, 1.5, bot_z)
+		bot.position = Vector3(bot_x, 0.4, bot_z)
 		bot.rotation_degrees.y = 180.0
 		add_child(bot)
 		bot_bodies.append(bot)
@@ -277,6 +340,14 @@ func _setup_bots() -> void:
 		var bot_visuals = _create_3d_car_model(bot_colors[i], true)
 		bot_visuals.position = Vector3(0, 0, 0) 
 		bot.add_child(bot_visuals)
+		
+		# Collect wheel node references for spinning animation
+		var wheels: Array[Node3D] = []
+		for wi in range(4):
+			var wnode = bot_visuals.get_node_or_null("BotWheel_%d" % wi)
+			if wnode:
+				wheels.append(wnode)
+		bot_wheel_nodes.append(wheels)
 		
 		# Bot collision
 		var collision := CollisionShape3D.new()
@@ -295,13 +366,15 @@ func _setup_bots() -> void:
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
 		bot_current_x.append(bot_x)
+		bot_push_offset_x.append(0.0)
+		bot_push_offset_z.append(0.0)
 	
 	if hud:
 		hud.init_minimap_markers(bot_colors)
 
 func _setup_aura_orbs() -> void:
-	# Spawn aura orbs along the track
-	var orb_spacing := 40.0
+	# Spawn aura orbs along the track (30% less frequent = 30% larger spacing)
+	var orb_spacing := 57.0  # Was 40.0, increased by ~43% to get 30% fewer orbs
 	var num_orbs := int(TRACK_LENGTH / orb_spacing)
 	
 	for i in range(num_orbs):
@@ -599,8 +672,25 @@ func _update_aura_system(delta: float) -> void:
 		if aura_burst_timer <= 0.0:
 			aura_burst_active = false
 	
-	# Drift aura gain - need to get drift state from car controller
-	pass
+	# Aura speed boost timer & application
+	if aura_boost_active:
+		aura_boost_timer -= delta
+		if aura_boost_timer <= 0.0:
+			aura_boost_active = false
+			aura_boost_force = 0.0
+		else:
+			# Apply forward boost force to player car
+			_apply_aura_boost(delta)
+
+func _apply_aura_boost(delta: float) -> void:
+	"""Apply forward impulse to player car based on current aura boost."""
+	if not player_body:
+		return
+	var forward_dir = -player_body.global_transform.basis.z
+	# Fade out boost over time (stronger at start, weaker near end)
+	var fade = aura_boost_timer / AURA_BOOST_DURATION
+	var force = aura_boost_force * fade
+	player_body.apply_central_force(forward_dir * force)
 
 func _check_aura_orb_collection() -> void:
 	var pickup_radius := 2.5
@@ -620,14 +710,23 @@ func _collect_aura_orb(orb: Node3D) -> void:
 	var time_bonus = 0.1
 	race_time = maxf(race_time - time_bonus, 0.0)
 	
+	# --- AURA SPEED BOOST ---
+	# The more aura you have, the stronger the boost
+	# Boost scales based on aura_meter (no cap, stronger as aura grows)
+	var aura_ratio = aura_meter / AURA_BOOST_REFERENCE  # Can exceed 1.0
+	aura_boost_force = lerp(AURA_BOOST_BASE_FORCE, AURA_BOOST_MAX_FORCE, min(aura_ratio, 3.0))
+	aura_boost_timer = AURA_BOOST_DURATION
+	aura_boost_active = true
+	
 	orb.visible = false
 	if hud:
 		hud.pulse_aura_display()
-		# Optionally show floating text or indicator for "-0.1s" if we had a method for it
-		# For now, the faster timer update will be the feedback
 
 func _add_aura(amount: float) -> void:
-	aura_meter = minf(aura_meter + amount, AURA_MAX)
+	aura_meter += amount  # No cap - aura grows infinitely
+	# Track highest aura achieved
+	if aura_meter > highest_aura:
+		highest_aura = aura_meter
 
 # ============================================================================
 # BOT AI
@@ -652,19 +751,39 @@ func _update_bot_ai(delta: float) -> void:
 		
 		# Update bot position (Smooth lane change)
 		var target_x := _lane_to_x(bot_lanes[i])
-		# Interpolate current x towards target x
-		# Adjust the lerp weight (e.g., 5.0 * delta) to control smoothness speed
 		var prev_x = bot_current_x[i]
 		bot_current_x[i] = lerpf(bot_current_x[i], target_x, 5.0 * delta)
 		
 		# Calculate banking (roll) based on lateral movement
 		var lateral_speed = (bot_current_x[i] - prev_x) / delta
-		var target_roll = clamp(lateral_speed * -0.05, -0.2, 0.2) # Bank into turn
+		var target_roll = clamp(lateral_speed * -0.05, -0.2, 0.2)
 		var current_rot = bot.rotation.z
 		bot.rotation.z = lerpf(current_rot, target_roll, 5.0 * delta)
 		
-		var current_z = bot_positions[i]
-		bot.position = Vector3(bot_current_x[i], 1.5, current_z)
+		# Recover push offsets over time (bots drift back to their AI path)
+		bot_push_offset_x[i] = lerpf(bot_push_offset_x[i], 0.0, 2.0 * delta)
+		bot_push_offset_z[i] = lerpf(bot_push_offset_z[i], 0.0, 1.5 * delta)
+		
+		# Clamp push offsets so bots don't fly off track
+		bot_push_offset_x[i] = clampf(bot_push_offset_x[i], -6.0, 6.0)
+		bot_push_offset_z[i] = clampf(bot_push_offset_z[i], -15.0, 15.0)
+		
+		var final_x = bot_current_x[i] + bot_push_offset_x[i]
+		# Keep bot within track bounds
+		final_x = clampf(final_x, -(TRACK_WIDTH / 2.0 - 1.0), TRACK_WIDTH / 2.0 - 1.0)
+		
+		var current_z = bot_positions[i] + bot_push_offset_z[i]
+		bot.position = Vector3(final_x, 0.4, current_z)
+		
+		# Spin bot wheels based on speed
+		if i < bot_wheel_nodes.size():
+			var wheel_spin_speed = bot_speeds[i] * 2.0  # radians per second
+			for wheel_node in bot_wheel_nodes[i]:
+				if wheel_node:
+					wheel_node.rotation.x += wheel_spin_speed * delta
+	
+	# Check player-bot collisions and apply proper push physics
+	_handle_player_bot_collisions(delta)
 
 func _bot_consider_lane_change(bot_index: int) -> void:
 	# Check if player is ahead in same lane - try to block or overtake
@@ -678,6 +797,41 @@ func _bot_consider_lane_change(bot_index: int) -> void:
 			bot_lanes[bot_index] = new_lane
 			bot_lane_change_timers[bot_index] = BOT_LANE_CHANGE_COOLDOWN
 
+func _handle_player_bot_collisions(_delta: float) -> void:
+	"""Detect player-bot proximity and apply proper push physics."""
+	if not player_body:
+		return
+	
+	var hit_radius := 3.0  # Distance at which we consider a collision
+	var player_vel := player_body.linear_velocity
+	var player_speed := player_vel.length()
+	
+	for i in range(NUM_BOTS):
+		var bot := bot_bodies[i]
+		var to_bot := bot.global_position - player_body.global_position
+		var dist := to_bot.length()
+		
+		if dist < hit_radius and player_speed > 3.0:
+			# Normalize direction from player to bot
+			var push_dir := to_bot.normalized()
+			
+			# Calculate push strength based on player speed
+			var push_strength := player_speed * 0.15  # Scale factor
+			
+			# Push the bot away in the direction of impact
+			bot_push_offset_x[i] += push_dir.x * push_strength
+			bot_push_offset_z[i] += push_dir.z * push_strength
+			
+			# Also add forward push if player is moving fast (rear-end collision)
+			var forward_component = player_vel.dot(Vector3(0, 0, 1))
+			if abs(forward_component) > 5.0:
+				bot_push_offset_z[i] += sign(forward_component) * abs(forward_component) * 0.08
+			
+			# Dampen player velocity on impact (soft collision, not violent)
+			# Keep most forward speed, reduce lateral and stop spin
+			player_body.linear_velocity *= 0.6   # Lose 40% speed on impact
+			player_body.angular_velocity = Vector3.ZERO  # No spinning
+
 # ============================================================================
 # COLLISION & RANKING
 # ============================================================================
@@ -690,7 +844,7 @@ func _check_collisions() -> void:
 		var dist := player_body.position.distance_to(bot.position)
 		
 		if dist < collision_radius:
-			# Collision penalty
+			# Collision penalty (aura only)
 			aura_meter = maxf(aura_meter - AURA_COLLISION_PENALTY, 0.0)
 			aura_streak_multiplier = 1.0
 
@@ -723,7 +877,8 @@ func _save_data() -> void:
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
 		var data = {
-			"best_time_2000m": best_time_2000m
+			"best_time_2000m": best_time_2000m,
+			"highest_aura": highest_aura
 		}
 		file.store_string(JSON.stringify(data))
 
@@ -738,8 +893,11 @@ func _load_data() -> void:
 		var error = json.parse(json_string)
 		if error == OK:
 			var data = json.data
-			if typeof(data) == TYPE_DICTIONARY and "best_time_2000m" in data:
-				best_time_2000m = data["best_time_2000m"]
+			if typeof(data) == TYPE_DICTIONARY:
+				if "best_time_2000m" in data:
+					best_time_2000m = data["best_time_2000m"]
+				if "highest_aura" in data:
+					highest_aura = data["highest_aura"]
 
 # ============================================================================
 # RACE FINISH & UTILITY
@@ -766,12 +924,15 @@ func _finish_race(winner_name: String) -> void:
 	if winner_name == "Player":
 		if best_time_2000m == 0.0 or race_time < best_time_2000m:
 			best_time_2000m = race_time
-			_save_data()
+	
+	# Always save data (highest aura is tracked regardless of winner)
+	_save_data()
 	
 	emit_signal("race_finished", winner)
 	if hud:
 		hud.show_race_complete(winner_name, player_rank, NUM_BOTS + 1)
 		hud.update_best_time_display(best_time_2000m)
+		hud.update_highest_aura_display(highest_aura)
 
 func _lane_to_x(lane: int) -> float:
 	# Convert lane index to X position
@@ -815,29 +976,35 @@ func _create_3d_car_model(color: Color, with_wheels: bool) -> Node3D:
 	
 	# Add wheels for bots (player uses VehicleWheel3D physics wheels)
 	if with_wheels and _car_wheel_scene:
+		# Wheel positions: Y=0 so tires sit on the ground relative to the bot body
 		var wheel_positions = [
-			Vector3(-1.0, 0.35, 1.3),   # Front Left
-			Vector3(1.0, 0.35, 1.3),    # Front Right
-			Vector3(-1.0, 0.3, -1.3),   # Rear Left
-			Vector3(1.0, 0.3, -1.3)     # Rear Right
+			Vector3(-1.0, 0.0, 1.3),    # Front Left
+			Vector3(1.0, 0.0, 1.3),     # Front Right
+			Vector3(-1.0, 0.0, -1.3),   # Rear Left
+			Vector3(1.0, 0.0, -1.3)     # Rear Right
 		]
+		var wheel_idx = 0
 		for pos in wheel_positions:
 			var wheel_model = _car_wheel_scene.instantiate()
+			wheel_model.name = "BotWheel_%d" % wheel_idx
 			wheel_model.scale = Vector3(0.9, 0.9, 0.9)
 			wheel_model.position = pos
 			_apply_neon_to_model(wheel_model, color)
 			root.add_child(wheel_model)
+			wheel_idx += 1
 	elif with_wheels:
 		# Fallback cylinder wheels if model can't load
 		var material = _create_neon_material(color)
 		var wheel_positions = [
-			Vector3(-0.95, 0.4, 1.3),
-			Vector3(0.95, 0.4, 1.3),
-			Vector3(-0.95, 0.4, -1.3),
-			Vector3(0.95, 0.4, -1.3)
+			Vector3(-0.95, 0.0, 1.3),
+			Vector3(0.95, 0.0, 1.3),
+			Vector3(-0.95, 0.0, -1.3),
+			Vector3(0.95, 0.0, -1.3)
 		]
+		var wheel_idx = 0
 		for pos in wheel_positions:
 			var w = MeshInstance3D.new()
+			w.name = "BotWheel_%d" % wheel_idx
 			w.mesh = CylinderMesh.new()
 			w.mesh.height = 0.35
 			w.mesh.top_radius = 0.4
@@ -846,6 +1013,7 @@ func _create_3d_car_model(color: Color, with_wheels: bool) -> Node3D:
 			w.position = pos
 			w.mesh.material = material
 			root.add_child(w)
+			wheel_idx += 1
 	
 	return root
 

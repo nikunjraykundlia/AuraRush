@@ -9,6 +9,7 @@ var aura_value: Label
 var timer_panel: Panel
 var timer_label: Label
 var best_time_label: Label
+var highest_aura_label: Label
 var minimap_panel: Panel
 var flash_rect: ColorRect
 var countdown_panel: Control
@@ -151,6 +152,13 @@ func _setup_timer_display():
 	best_time_label.add_theme_font_size_override("font_size", 18)
 	best_time_label.modulate = Color(1, 1, 1, 0.7)
 	container.add_child(best_time_label)
+	
+	highest_aura_label = Label.new()
+	highest_aura_label.text = "TOP AURA: 0"
+	highest_aura_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	highest_aura_label.add_theme_font_size_override("font_size", 18)
+	highest_aura_label.modulate = Color(1.0, 0.84, 0.0, 0.85)  # Gold
+	container.add_child(highest_aura_label)
 
 var player_map_marker: ColorRect
 var bot_map_markers: Array[ColorRect] = []
@@ -332,6 +340,12 @@ func update_best_time_display(time_sec: float):
 	else:
 		best_time_label.text = "BEST " + _format_time(time_sec)
 
+func update_highest_aura_display(aura_val: float):
+	if aura_val <= 0:
+		highest_aura_label.text = "TOP AURA: --"
+	else:
+		highest_aura_label.text = "TOP AURA: %d" % int(aura_val)
+
 func _format_time(time_sec: float) -> String:
 	var m = int(time_sec / 60)
 	var s = int(time_sec) % 60
@@ -436,7 +450,7 @@ func show_race_complete(winner_name: String, final_pos: int, total: int):
 	
 	# Best Time note
 	var time_label = Label.new()
-	time_label.text = "Check Best Time in HUD"
+	time_label.text = "Check Best Time and Aura"
 	time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	time_label.add_theme_font_size_override("font_size", 24)
 	time_label.modulate = Color(1, 1, 1, 0.6)
