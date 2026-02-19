@@ -10,8 +10,8 @@ const JUMP_FORCE = 4000.0             # Lower base jump for smoother arcs
 const HIGH_SPEED_STEER_REDUCTION = 0.5
 const HIGH_SPEED_THRESHOLD = 55.0
 
-var max_engine_force = 30000.0
-var base_engine_force = 30000.0
+var max_engine_force = 20000.0
+var base_engine_force = 15000.0
 
 # Camera control
 const MOUSE_SENSITIVITY = 0.002
