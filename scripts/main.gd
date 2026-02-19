@@ -115,16 +115,12 @@ var is_paused: bool = false
 # ============================================================================
 
 # Preloaded 3D car model scenes
-var _car_body_scene: PackedScene = null
-var _car_wheel_scene: PackedScene = null
+var _car_body_scene: PackedScene = preload("res://assets/models/Doge/doge-body.glb")
+var _car_wheel_scene: PackedScene = preload("res://assets/models/Doge/Wheel.glb")
 
 func _ready() -> void:
 	randomize()
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	
-	# Preload 3D car model
-	_car_body_scene = load("res://assests/models/Doge/doge-body.glb")
-	_car_wheel_scene = load("res://assests/models/Doge/Wheel.glb")
 	
 	# Find references
 	player_body = $Car

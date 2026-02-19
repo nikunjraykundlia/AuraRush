@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bti0jlraphs7j"
-path.s3tc="res://.godot/imported/doge-body_GEN4DR_INTERIOR_dif.png-d4f2c6f5fb7d18fe0949536ce5d1ccb3.s3tc.ctex"
+uid="uid://b7i7veysoctq2"
+path.s3tc="res://.godot/imported/doge-body_UCB_BOTTOM_DIF.png-19ff0b04dc1352e1d8267e34f8457dd8.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ generator_parameters={}
 
 [deps]
 
-source_file="res://assests/models/Doge/doge-body_GEN4DR_INTERIOR_dif.png"
-dest_files=["res://.godot/imported/doge-body_GEN4DR_INTERIOR_dif.png-d4f2c6f5fb7d18fe0949536ce5d1ccb3.s3tc.ctex"]
+source_file="res://assets/models/Doge/doge-body_UCB_BOTTOM_DIF.png"
+dest_files=["res://.godot/imported/doge-body_UCB_BOTTOM_DIF.png-19ff0b04dc1352e1d8267e34f8457dd8.s3tc.ctex"]
 
 [params]
 

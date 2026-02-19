@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bty2rpvw2dh0h"
-path="res://.godot/imported/doge-body.glb-59226a3fd1652b2731aad394b172ccdc.scn"
+path="res://.godot/imported/doge-body.glb-84f9af37d104357dee4318427bfdfccd.scn"
 
 [deps]
 
-source_file="res://assests/models/Doge/doge-body.glb"
-dest_files=["res://.godot/imported/doge-body.glb-59226a3fd1652b2731aad394b172ccdc.scn"]
+source_file="res://assets/models/Doge/doge-body.glb"
+dest_files=["res://.godot/imported/doge-body.glb-84f9af37d104357dee4318427bfdfccd.scn"]
 
 [params]
 

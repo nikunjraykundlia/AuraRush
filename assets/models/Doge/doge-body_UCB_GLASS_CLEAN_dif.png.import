@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ctluyesgj2u1x"
-path.s3tc="res://.godot/imported/doge-body_Riverside88_lights_dif.png-d0bbf02e93199d24ae14924b3934a703.s3tc.ctex"
+uid="uid://c8ola23rjsnvm"
+path.s3tc="res://.godot/imported/doge-body_UCB_GLASS_CLEAN_dif.png-b4cb0905b1684598931cb551dd5f3737.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ generator_parameters={}
 
 [deps]
 
-source_file="res://assests/models/Doge/doge-body_Riverside88_lights_dif.png"
-dest_files=["res://.godot/imported/doge-body_Riverside88_lights_dif.png-d0bbf02e93199d24ae14924b3934a703.s3tc.ctex"]
+source_file="res://assets/models/Doge/doge-body_UCB_GLASS_CLEAN_dif.png"
+dest_files=["res://.godot/imported/doge-body_UCB_GLASS_CLEAN_dif.png-b4cb0905b1684598931cb551dd5f3737.s3tc.ctex"]
 
 [params]
 
