@@ -1,7 +1,7 @@
 extends VehicleBody3D
 
 # Car physics parameters
-const MAX_ENGINE_FORCE = 30000.0      
+
 const MAX_BRAKE_FORCE = 3000.0
 const MAX_REVERSE_FORCE = 5000.0
 const MAX_STEER_ANGLE = 0.35
@@ -9,6 +9,10 @@ const STEER_SPEED = 1.5              # Snappy steering response
 const JUMP_FORCE = 4000.0             # Lower base jump for smoother arcs
 const HIGH_SPEED_STEER_REDUCTION = 0.5
 const HIGH_SPEED_THRESHOLD = 55.0
+
+var max_engine_force = 30000.0
+var base_engine_force = 30000.0
+
 # Camera control
 const MOUSE_SENSITIVITY = 0.002
 const CAMERA_SMOOTH = 5.0
@@ -106,7 +110,7 @@ func set_input_enabled(enabled: bool, flush_buffer: bool = false) -> void:
 func _process_buffered_input() -> void:
 	# Keep the throttle if it was pressed during countdown
 	if early_input_buffer.get("accelerate", false):
-		engine_force = -MAX_ENGINE_FORCE
+		engine_force = -max_engine_force
 
 func handle_input(delta):
 	# FIXED steering axis order
@@ -157,7 +161,7 @@ func handle_input(delta):
 			brake = 0
 	else:
 		# Forward
-		engine_force = -throttle_input * MAX_ENGINE_FORCE
+		engine_force = -throttle_input * max_engine_force
 		brake = 0
 	
 	# --------------------------------------------------------------------------
@@ -280,3 +284,10 @@ func reset_car():
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	early_input_buffer.clear()
+	# Reset Engine Force
+	max_engine_force = base_engine_force
+
+func apply_speed_penalty_percent(percent: float):
+	# Reduce max engine force by percentage (e.g. 0.4 reduces force by 40%)
+	# Or set directly to (1.0 - percent) * base
+	max_engine_force = base_engine_force * (1.0 - percent)

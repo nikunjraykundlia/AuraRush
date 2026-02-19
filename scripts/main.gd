@@ -5,7 +5,7 @@ extends Node3D
 # ============================================================================
 
 # --- Race Configuration ---
-const NUM_BOTS := 3
+const NUM_BOTS := 7
 const TRACK_LENGTH := 3000.0          # Finish line distance in meters
 const TRACK_WIDTH := 16.0             # Lane width
 const NUM_LANES := 4                  # Number of driving lanes
@@ -311,7 +311,11 @@ func _setup_bots() -> void:
 	var bot_colors: Array[Color] = [
 		Color(1.0, 0.15, 0.49),  # Pink
 		Color(1.0, 0.85, 0.0),   # Yellow
-		Color(0.0, 1.0, 0.4)     # Green
+		Color(0.0, 1.0, 0.4),    # Green
+		Color(0.5, 0.0, 1.0),    # Purple
+		Color(1.0, 0.4, 0.0),    # Orange
+		Color(0.0, 0.5, 1.0),    # Blue
+		Color(1.0, 0.0, 0.0)     # Red
 	]
 	
 	for i in range(NUM_BOTS):
@@ -359,8 +363,9 @@ func _setup_bots() -> void:
 		# Initialize bot state
 		bot_positions.append(bot_z)
 		bot_lanes.append(bot_lane)
-		# Randomize bot speed widely so winner is unpredictable each race
-		var speed = randf_range(35.0, 58.0)
+		# Randomize bot speed widely but skewed higher for difficulty
+		# Make top bots faster (55-65 range) to challenge player
+		var speed = randf_range(40.0, 62.0)
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
 		bot_current_x.append(bot_x)
@@ -569,21 +574,25 @@ func _physics_process(delta: float) -> void:
 	if is_paused:
 		return
 		
-	if race_state == "racing":
-		_update_bot_ai(delta)
-		_check_collisions()
-		_update_rankings()
+	if race_state == "racing" or race_state == "countdown":
+		# Update positions for minimap even during countdown
+		if race_state == "racing":
+			_update_bot_ai(delta)
+			_check_collisions()
+			_update_rankings()
 		
 		# Update player position tracking for game logic
 		if player_body:
 			player_position = player_body.global_position.z
-			player_x_offset = player_body.global_position.x
-			player_lane = _x_to_lane(player_x_offset)
+			if race_state == "racing":
+				player_x_offset = player_body.global_position.x
+				player_lane = _x_to_lane(player_x_offset)
 			
 			# UI Update Rate limiter could be implemented here if needed, but per-frame is smooth
 			if hud:
-				hud.update_rank(player_rank, NUM_BOTS + 1)
-				hud.update_aura(aura_meter)
+				if race_state == "racing":
+					hud.update_rank(player_rank, NUM_BOTS + 1)
+					hud.update_aura(aura_meter)
 				
 				# Minimap update
 				var player_prog = player_position / TRACK_LENGTH
@@ -592,8 +601,9 @@ func _physics_process(delta: float) -> void:
 					bot_progs.append(pos / TRACK_LENGTH)
 				hud.update_minimap(player_prog, bot_progs)
 		
-		_check_player_fall_respawn()
-		_check_player_flipped(delta)
+		if race_state == "racing":
+			_check_player_fall_respawn()
+			_check_player_flipped(delta)
 
 func _check_player_flipped(delta: float) -> void:
 	if not player_body: return
@@ -613,11 +623,19 @@ func _reset_car_orientation() -> void:
 	
 	var current_pos = player_body.global_position
 	
-	# Reset orientation and place car at exact center of track (X=0), lift slightly
-	player_body.linear_velocity = Vector3.ZERO
+	# Reset orientation and place car at exact center of track (X=0), lift safely to track surface
+	var speed = player_body.linear_velocity.length()
+	# Ensure running in correct direction (+Z)
+	player_body.linear_velocity = Vector3(0, 0, speed) 
 	player_body.angular_velocity = Vector3.ZERO
-	player_body.global_position = Vector3(0.0, current_pos.y + 1.0, current_pos.z)
+	# 2.0 is safe height above track surface (which is at Y=0.0)
+	player_body.global_position = Vector3(0.0, 2.0, current_pos.z)
 	player_body.rotation_degrees = Vector3(0, 180, 0) # Face forward
+	
+	# Apply 40% Top Speed Penalty (Engine Force Reduction)
+	if player_body.has_method("apply_speed_penalty_percent"):
+		player_body.apply_speed_penalty_percent(0.4)
+
 	
 	if hud:
 		hud.show_recover_alert()
