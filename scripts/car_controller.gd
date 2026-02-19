@@ -1,15 +1,14 @@
 extends VehicleBody3D
 
 # Car physics parameters
-const MAX_ENGINE_FORCE = 47000.0      
-const MAX_BRAKE_FORCE = 5000.0
-const MAX_REVERSE_FORCE = 15000.0
+const MAX_ENGINE_FORCE = 30000.0      
+const MAX_BRAKE_FORCE = 3000.0
+const MAX_REVERSE_FORCE = 5000.0
 const MAX_STEER_ANGLE = 0.35
-const STEER_SPEED = 5.0              # Snappy steering response
+const STEER_SPEED = 1.5              # Snappy steering response
 const JUMP_FORCE = 4000.0             # Lower base jump for smoother arcs
-const HIGH_SPEED_STEER_REDUCTION = 0.4
-const HIGH_SPEED_THRESHOLD = 80.0
-
+const HIGH_SPEED_STEER_REDUCTION = 0.5
+const HIGH_SPEED_THRESHOLD = 55.0
 # Camera control
 const MOUSE_SENSITIVITY = 0.002
 const CAMERA_SMOOTH = 5.0
@@ -242,27 +241,19 @@ func _dampen_wall_contact(_delta):
 func _input(event):
 	if event.is_action_pressed("toggle_camera"):
 		if camera_mode == "follow":
-			camera_mode = "mouse"
-			camera_rotation_x = 0.0
-			camera_rotation_y = 0.0
+			camera_mode = "driver"
 		else:
 			camera_mode = "follow"
-	
-	if camera_mode == "mouse" and event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-		camera_rotation_x -= event.relative.y * MOUSE_SENSITIVITY
-		camera_rotation_y -= event.relative.x * MOUSE_SENSITIVITY
-		camera_rotation_x = clamp(camera_rotation_x, -PI/3, PI/6)
 
 func update_camera(delta):
 	if not camera_mount:
 		return
 	
+	var car_transform = global_transform
+	var car_forward = -car_transform.basis.z
+	
 	if camera_mode == "follow":
-		var car_transform = global_transform
-		
-		# FIXED forward direction
-		var car_forward = -car_transform.basis.z
-		
+		# Chase cam: behind and above the car
 		var target_position = car_transform.origin - car_forward * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
 		camera_mount.global_position = camera_mount.global_position.lerp(target_position, CAMERA_FOLLOW_SPEED * delta)
 		
@@ -271,12 +262,17 @@ func update_camera(delta):
 			camera.look_at(look_target, Vector3.UP)
 		
 		camera_mount.rotation = Vector3.ZERO
-	else:
-		var target_rotation = Vector3(camera_rotation_x, camera_rotation_y, 0)
-		camera_mount.rotation = camera_mount.rotation.lerp(target_rotation, CAMERA_SMOOTH * delta)
+	
+	elif camera_mode == "driver":
+		# Driver POV: inside the car, looking forward
+		var driver_pos = car_transform.origin + car_forward * 0.5 + Vector3.UP * 1.2
+		camera_mount.global_position = camera_mount.global_position.lerp(driver_pos, 15.0 * delta)
 		
-		var target_position = Vector3(0, 3, -6)
-		camera_mount.position = camera_mount.position.lerp(target_position, CAMERA_SMOOTH * delta)
+		if camera:
+			var look_target = car_transform.origin + car_forward * 50.0 + Vector3.UP * 0.8
+			camera.look_at(look_target, Vector3.UP)
+		
+		camera_mount.rotation = Vector3.ZERO
 
 func reset_car():
 	global_transform.origin = Vector3(0, 2, 0)
