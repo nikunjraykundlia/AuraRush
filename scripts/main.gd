@@ -6,7 +6,7 @@ extends Node3D
 
 # --- Race Configuration ---
 const NUM_BOTS := 3
-const TRACK_LENGTH := 3000.0          # Total track distance in meters
+const TRACK_LENGTH := 3000.0     # Total track distance in meters
 const TRACK_WIDTH := 16.0             # Lane width
 const NUM_LANES := 4                  # Number of driving lanes
 const LANE_WIDTH := TRACK_WIDTH / NUM_LANES
@@ -100,9 +100,17 @@ var is_paused: bool = false
 # INITIALIZATION
 # ============================================================================
 
+# Preloaded 3D car model scenes
+var _car_body_scene: PackedScene = null
+var _car_wheel_scene: PackedScene = null
+
 func _ready() -> void:
 	randomize()
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	
+	# Preload 3D car model
+	_car_body_scene = load("res://assests/models/Doge/doge-body.glb")
+	_car_wheel_scene = load("res://assests/models/Doge/Wheel.glb")
 	
 	# Find references
 	player_body = $Car
@@ -126,30 +134,38 @@ func _ready() -> void:
 		hud.update_aura(aura_meter)
 		hud.update_rank(1, NUM_BOTS + 1)
 	
-	# 1. Apply Neon Shader to Player Car Body
+	# 1. Apply 3D car model to Player Car Body
 	var player_mesh_node = player_body.get_node_or_null("MeshInstance3D")
 	if player_mesh_node:
 		player_mesh_node.queue_free() # Remove the placeholder box
-		
-		# Create new visuals container
-		# Player has their own physics wheels, so with_wheels=false
-		var new_visuals = _construct_car_visuals(Color(0.0, 0.96, 1.0), false) 
-		new_visuals.name = "CarVisuals"
-		new_visuals.position = Vector3(0, 0.25, 0) 
-		player_body.add_child(new_visuals)
+	
+	# Create 3D model visuals for player (cyan neon color)
+	var player_car_visuals = _create_3d_car_model(Color(0.0, 0.96, 1.0), false)
+	player_car_visuals.name = "CarVisuals"
+	player_body.add_child(player_car_visuals)
 	
 	# 2. Apply Neon Shader to Player Wheels
 	var wheel_mat = _create_neon_material(Color(0.0, 0.96, 1.0))
 	for wheel_name in ["FrontLeftWheel", "FrontRightWheel", "RearLeftWheel", "RearRightWheel"]:
 		var wheel_node = player_body.get_node_or_null(wheel_name)
 		if wheel_node:
-			var mesh_inst = wheel_node.get_node_or_null("MeshInstance3D")
-			if mesh_inst:
-				mesh_inst.mesh.material = wheel_mat
-
+			# Remove the old cylinder mesh
+			var old_mesh = wheel_node.get_node_or_null("MeshInstance3D")
+			if old_mesh:
+				old_mesh.queue_free()
+			# Add 3D wheel model
+			if _car_wheel_scene:
+				var wheel_model = _car_wheel_scene.instantiate()
+				wheel_model.name = "WheelModel"
+				wheel_model.scale = Vector3(0.9, 0.9, 0.9)
+				_apply_neon_to_model(wheel_model, Color(0.0, 0.96, 1.0))
+				wheel_node.add_child(wheel_model)
 	
-	# Allow a momentary delay before countdown starts so scene loads fully
-	await get_tree().create_timer(1.0).timeout
+	# Smooth start: wait for scene to fully initialize, then start countdown
+	# Use call_deferred to avoid first-frame visual pop
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.5).timeout
 	_start_countdown()
 
 func _setup_track() -> void:
@@ -187,14 +203,14 @@ func _setup_track() -> void:
 			divider.mesh.material = _create_simple_neon_material(Color(1.0, 1.0, 1.0, 0.6))
 			add_child(divider)
 		
-		# Track edge barriers (neon)
+		# Track edge barriers (neon) - Soft walls to prevent hard bouncing
 		for side in [-1, 1]:
 			var barrier_body := StaticBody3D.new()
-			# Add frictionless material to prevent sticking
+			# Soft, absorbent barrier to minimize reaction force
 			var friction_mat := PhysicsMaterial.new()
-			friction_mat.friction = 0.1
-			friction_mat.bounce = 0.05
-			friction_mat.absorbent = true
+			friction_mat.friction = 0.0  # Zero friction so car slides along
+			friction_mat.bounce = 0.0    # Zero bounce to prevent bouncing back
+			friction_mat.absorbent = true # Absorb impact energy
 			barrier_body.physics_material_override = friction_mat
 			
 			barrier_body.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.25), 0.75, float(i) * segment_length)
@@ -213,22 +229,26 @@ func _setup_track() -> void:
 			barrier_mesh.mesh.material = _create_simple_neon_material(barrier_color)
 			barrier_body.add_child(barrier_mesh)
 
-	# End Wall at the very end of the track
-	var end_z = num_segments * segment_length
-	var e_body = StaticBody3D.new()
-	e_body.position = Vector3(0, 10, end_z)
-	add_child(e_body)
+	# End Wall at exactly 3100m (TRACK_LENGTH)
+	var end_wall_body = StaticBody3D.new()
+	var end_wall_friction = PhysicsMaterial.new()
+	end_wall_friction.friction = 0.5
+	end_wall_friction.bounce = 0.0
+	end_wall_friction.absorbent = true
+	end_wall_body.physics_material_override = end_wall_friction
+	end_wall_body.position = Vector3(0, 10, 3100.0)  # Exactly 3100m
+	add_child(end_wall_body)
 	
 	var ec = CollisionShape3D.new()
 	ec.shape = BoxShape3D.new()
 	ec.shape.size = Vector3(TRACK_WIDTH * 3, 40, 5)
-	e_body.add_child(ec)
+	end_wall_body.add_child(ec)
 	
 	var em = MeshInstance3D.new()
 	em.mesh = BoxMesh.new()
 	em.mesh.size = Vector3(TRACK_WIDTH * 3, 40, 5)
 	em.mesh.material = _create_simple_neon_material(Color(1, 0, 0)) # Red
-	e_body.add_child(em)
+	end_wall_body.add_child(em)
 
 func _setup_bots() -> void:
 	var bot_colors: Array[Color] = [
@@ -253,15 +273,10 @@ func _setup_bots() -> void:
 		add_child(bot)
 		bot_bodies.append(bot)
 		
-		# Construct procedural car visuals
-		# Bots need visual wheels since they are just RigidBodies, so with_wheels=true
-		var bot_visuals = _construct_car_visuals(bot_colors[i], true)
+		# Use 3D car model for bots with their neon color
+		var bot_visuals = _create_3d_car_model(bot_colors[i], true)
 		bot_visuals.position = Vector3(0, 0, 0) 
 		bot.add_child(bot_visuals)
-		
-		# We don't need to track bot_meshes array as strictly if we aren't changing colors dynamically later
-		# But if needed, we can store the root node
-		# bot_meshes.append(bot_visuals)
 		
 		# Bot collision
 		var collision := CollisionShape3D.new()
@@ -527,10 +542,10 @@ func _reset_car_orientation() -> void:
 	
 	var current_pos = player_body.global_position
 	
-	# Reset orientation but keep position (lift slightly to avoid clipping)
+	# Reset orientation and place car at exact center of track (X=0), lift slightly
 	player_body.linear_velocity = Vector3.ZERO
 	player_body.angular_velocity = Vector3.ZERO
-	player_body.global_position = Vector3(current_pos.x, current_pos.y + 1.0, current_pos.z)
+	player_body.global_position = Vector3(0.0, current_pos.y + 1.0, current_pos.z)
 	player_body.rotation_degrees = Vector3(0, 180, 0) # Face forward
 	
 	if hud:
@@ -767,111 +782,54 @@ func _x_to_lane(x: float) -> int:
 	var normalized := (x + TRACK_WIDTH / 2.0) / TRACK_WIDTH
 	return clampi(int(normalized * NUM_LANES), 0, NUM_LANES - 1)
 
-func _construct_car_visuals(color: Color, with_wheels: bool) -> Node3D:
-	var root = Node3D.new()
-	var material = _create_neon_material(color)
-	var black_mat = StandardMaterial3D.new()
-	black_mat.albedo_color = Color(0.05, 0.05, 0.05)
-	
-	# --- SUPERCAR BODY DESIGN (Pagani-inspired) ---
-	
-	# 1. Central Fuselage (Rounded Cockpit & Body)
-	var body = MeshInstance3D.new()
-	body.mesh = BoxMesh.new() # Using box as base, but we'll add curves
-	body.mesh.size = Vector3(1.6, 0.5, 4.2)
-	body.position = Vector3(0, 0.35, 0)
-	body.mesh.material = material
-	root.add_child(body)
-	
-	# 2. Bubble Cockpit (Teardrop shape)
-	var cockpit = MeshInstance3D.new()
-	var cap_mesh = CapsuleMesh.new()
-	cap_mesh.radius = 0.55
-	cap_mesh.height = 2.2
-	cockpit.mesh = cap_mesh
-	# Rotate to lie flat along Z
-	cockpit.rotation_degrees.x = 90 
-	cockpit.position = Vector3(0, 0.65, -0.2)
-	cockpit.mesh.material = material
-	root.add_child(cockpit)
-	
-	# 3. Curvy Fenders (Wheel Arches)
-	# We use cylinders rotated 90 deg along Z to make the rounded top of fenders
-	var fender_positions = [
-		Vector3(-0.9, 0.0, 1.3),  # FL
-		Vector3(0.9, 0.0, 1.3),   # FR
-		Vector3(-0.9, 0.1, -1.3), # RL (Rear hips are wider/higher)
-		Vector3(0.9, 0.1, -1.3)   # RR
-	]
-	
-	for i in range(4):
-		var straight_part = MeshInstance3D.new()
-		straight_part.mesh = BoxMesh.new()
-		straight_part.mesh.size = Vector3(0.6, 0.4, 1.4)
-		straight_part.position = fender_positions[i] + Vector3(0, 0.3, 0)
-		straight_part.mesh.material = material
-		root.add_child(straight_part)
-		
-		# Add a prism on top for a sharp aerodynamic edge? Or just keep it sleek boxy-curved.
-		# Let's add the Front Nose Cone
-	
-	# 4. Pointy Nose (Pagani Zonda style)
-	var nose = MeshInstance3D.new()
-	var nose_mesh = PrismMesh.new()
-	nose_mesh.size = Vector3(1.4, 0.4, 1.0)
-	nose.mesh = nose_mesh
-	nose.rotation_degrees.x = -90 # Point forward
-	nose.position = Vector3(0, 0.35, 2.5) # Front
-	nose.mesh.material = material
-	root.add_child(nose)
-	
-	# 5. Rear Engine Deck & Exhausts
-	var rear_deck = MeshInstance3D.new()
-	var rd_mesh = PrismMesh.new()
-	rd_mesh.size = Vector3(1.5, 0.5, 1.2)
-	rear_deck.mesh = rd_mesh
-	rear_deck.rotation_degrees.x = 90 # Slope down to rear
-	rear_deck.position = Vector3(0, 0.5, -2.4)
-	rear_deck.mesh.material = material
-	root.add_child(rear_deck)
-	
-	# Quad Exhaust (Center)
-	var exhaust_group = Node3D.new()
-	exhaust_group.position = Vector3(0, 0.4, -2.9)
-	for x in [-0.1, 0.1]:
-		for y in [-0.1, 0.1]:
-			var pipe = MeshInstance3D.new()
-			pipe.mesh = CylinderMesh.new()
-			pipe.mesh.top_radius = 0.06
-			pipe.mesh.bottom_radius = 0.06
-			pipe.mesh.height = 0.4
-			pipe.rotation_degrees.x = 90
-			pipe.position = Vector3(x, y, 0)
-			# Bright neon inside
-			var pipe_mat = _create_simple_neon_material(Color(1, 0.6, 0.2)) # Orange glow
-			pipe.mesh.material = pipe_mat
-			exhaust_group.add_child(pipe)
-	root.add_child(exhaust_group)
-	
-	# 6. Split Wing Spoiler
-	for side in [-1, 1]:
-		var wing = MeshInstance3D.new()
-		wing.mesh = BoxMesh.new()
-		wing.mesh.size = Vector3(0.8, 0.05, 0.4)
-		wing.position = Vector3(side * 0.5, 0.9, -2.6)
-		wing.rotation_degrees.x = 10 # Attack angle
-		wing.mesh.material = material
-		root.add_child(wing)
-		
-		var fin = MeshInstance3D.new()
-		fin.mesh = BoxMesh.new()
-		fin.mesh.size = Vector3(0.05, 0.4, 0.6)
-		fin.position = Vector3(side * 0.8, 0.7, -2.6)
-		fin.mesh.material = material
-		root.add_child(fin)
+# ============================================================================
+# 3D CAR MODEL SYSTEM
+# ============================================================================
 
-	# --- WHEELS (Optional) ---
-	if with_wheels:
+func _create_3d_car_model(color: Color, with_wheels: bool) -> Node3D:
+	"""Create a 3D car model using the imported GLB, with neon color overlay."""
+	var root = Node3D.new()
+	
+	# Load and instantiate the 3D car body
+	if _car_body_scene:
+		var body_model = _car_body_scene.instantiate()
+		body_model.name = "BodyModel"
+		# The doge model in the demo was rotated 180 degrees (Transform has -1 on X and Z)
+		# Match that rotation so it faces +Z (forward in our track)
+		body_model.rotation_degrees.y = 180.0
+		body_model.scale = Vector3(1.0, 1.0, 1.0)
+		body_model.position = Vector3(0, 0.3, 0)
+		
+		# Apply neon color shader to all mesh surfaces in the model
+		_apply_neon_to_model(body_model, color)
+		
+		root.add_child(body_model)
+	else:
+		# Fallback: simple box if model can't load
+		var fallback = MeshInstance3D.new()
+		fallback.mesh = BoxMesh.new()
+		fallback.mesh.size = Vector3(1.6, 0.5, 4.2)
+		fallback.position = Vector3(0, 0.35, 0)
+		fallback.mesh.material = _create_neon_material(color)
+		root.add_child(fallback)
+	
+	# Add wheels for bots (player uses VehicleWheel3D physics wheels)
+	if with_wheels and _car_wheel_scene:
+		var wheel_positions = [
+			Vector3(-1.0, 0.35, 1.3),   # Front Left
+			Vector3(1.0, 0.35, 1.3),    # Front Right
+			Vector3(-1.0, 0.3, -1.3),   # Rear Left
+			Vector3(1.0, 0.3, -1.3)     # Rear Right
+		]
+		for pos in wheel_positions:
+			var wheel_model = _car_wheel_scene.instantiate()
+			wheel_model.scale = Vector3(0.9, 0.9, 0.9)
+			wheel_model.position = pos
+			_apply_neon_to_model(wheel_model, color)
+			root.add_child(wheel_model)
+	elif with_wheels:
+		# Fallback cylinder wheels if model can't load
+		var material = _create_neon_material(color)
 		var wheel_positions = [
 			Vector3(-0.95, 0.4, 1.3),
 			Vector3(0.95, 0.4, 1.3),
@@ -884,9 +842,21 @@ func _construct_car_visuals(color: Color, with_wheels: bool) -> Node3D:
 			w.mesh.height = 0.35
 			w.mesh.top_radius = 0.4
 			w.mesh.bottom_radius = 0.4
-			w.rotation_degrees.z = 90 # Stand up
+			w.rotation_degrees.z = 90
 			w.position = pos
-			w.mesh.material = material # Neon wheels!
+			w.mesh.material = material
 			root.add_child(w)
-			
+	
 	return root
+
+func _apply_neon_to_model(node: Node, color: Color) -> void:
+	"""Recursively apply neon shader material to all MeshInstance3D nodes in a model."""
+	if node is MeshInstance3D:
+		var mesh_inst := node as MeshInstance3D
+		var neon_mat = _create_neon_material(color)
+		# Apply to material override so it covers all surfaces
+		mesh_inst.material_override = neon_mat
+	
+	# Recurse into children
+	for child in node.get_children():
+		_apply_neon_to_model(child, color)

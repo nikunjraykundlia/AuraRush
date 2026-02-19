@@ -40,6 +40,10 @@ var distance_traveled: float = 0.0
 var input_enabled: bool = false
 var early_input_buffer: Dictionary = {} # Stores last pressed state of actions
 
+# Smooth start - force camera snap for first few frames to avoid white flash
+var _init_frames: int = 0
+const INIT_SNAP_FRAMES: int = 5
+
 signal speed_changed(speed_kmh: float)
 
 func _ready():
@@ -47,16 +51,8 @@ func _ready():
 	if camera_mount:
 		camera_mount.set_as_top_level(true)
 		
-		# Snap camera to initial position to avoid "white glitch" (camera starting inside car)
-		# We need to force update the camera position immediately before the first frame
-		var car_transform = global_transform
-		var car_forward = -car_transform.basis.z
-		var target_position = car_transform.origin - car_forward * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
-		camera_mount.global_position = target_position
-		
-		if camera:
-			var look_target = car_transform.origin + car_forward * 20.0
-			camera.look_at(look_target, Vector3.UP)
+		# Force-snap camera immediately to prevent any white flash
+		_force_snap_camera()
 
 	# Setup Ground Raycast
 	ground_ray = RayCast3D.new()
@@ -64,6 +60,21 @@ func _ready():
 	ground_ray.target_position = Vector3(0, -1.0, 0) # Cast down
 	ground_ray.enabled = true
 	add_child(ground_ray)
+	
+	# Also snap on deferred to catch post-ready positioning
+	call_deferred("_force_snap_camera")
+
+func _force_snap_camera() -> void:
+	"""Instantly teleport camera to correct position - no interpolation."""
+	if not camera_mount:
+		return
+	var car_transform = global_transform
+	var car_forward = -car_transform.basis.z
+	var target_position = car_transform.origin - car_forward * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
+	camera_mount.global_position = target_position
+	if camera:
+		var look_target = car_transform.origin + car_forward * 20.0
+		camera.look_at(look_target, Vector3.UP)
 
 func _physics_process(delta):
 	var velocity = linear_velocity
@@ -77,10 +88,16 @@ func _physics_process(delta):
 	
 	emit_signal("speed_changed", current_speed_kmh)
 	
+	# Force-snap camera for first few frames to prevent white flash at game start
+	if _init_frames < INIT_SNAP_FRAMES:
+		_init_frames += 1
+		_force_snap_camera()
+	
 	_check_grounded()
 	handle_input(delta)
 	update_camera(delta)
 	_apply_air_stabilization(delta)
+	_dampen_wall_contact(delta)
 
 func set_input_enabled(enabled: bool, flush_buffer: bool = false) -> void:
 	input_enabled = enabled
@@ -192,6 +209,24 @@ func _apply_air_stabilization(delta):
 		
 		apply_torque(global_transform.basis.x * correction_x * delta)
 		apply_torque(global_transform.basis.z * correction_z * delta)
+
+func _dampen_wall_contact(delta):
+	# Reduce lateral (X) velocity when the car is near track edges to prevent
+	# harsh wall bouncing. Track width is 16m, edges at ±8.0, walls at ±8.25
+	var x_pos = abs(global_position.x)
+	var track_half_width = 8.0  # TRACK_WIDTH / 2.0
+	
+	if x_pos > track_half_width - 0.5:  # Within 0.5m of the wall
+		# Dampen lateral velocity significantly
+		var vel = linear_velocity
+		var lateral_speed = abs(vel.x)
+		
+		if lateral_speed > 1.0:
+			# Kill most of the lateral bounce - keep only 10% of it
+			var damping = 0.1
+			linear_velocity.x *= damping
+			# Also kill any angular velocity from the impact
+			angular_velocity *= 0.5
 
 func _input(event):
 	if event.is_action_pressed("toggle_camera"):
