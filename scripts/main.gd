@@ -359,10 +359,8 @@ func _setup_bots() -> void:
 		# Initialize bot state
 		bot_positions.append(bot_z)
 		bot_lanes.append(bot_lane)
-		# Randomize bot speed for this session
-		var speed = randf_range(40.0, 52.0) # Speed varying between 40 and 52 km/h (converted to units) 
-		# Note: The speeds in main.gd seem to be in units per second, not km/h directly, but 40-45 was previous range.
-		# Let's make it wider and purely random.
+		# Randomize bot speed widely so winner is unpredictable each race
+		var speed = randf_range(35.0, 58.0)
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
 		bot_current_x.append(bot_x)

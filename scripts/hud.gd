@@ -336,9 +336,9 @@ func update_timer_display(time_sec: float):
 
 func update_best_time_display(time_sec: float):
 	if time_sec <= 0:
-		best_time_label.text = "BEST --:--.--"
+		best_time_label.text = "Best Time --:--.--"
 	else:
-		best_time_label.text = "BEST " + _format_time(time_sec)
+		best_time_label.text = "Best Time " + _format_time(time_sec)
 
 func update_highest_aura_display(aura_val: float):
 	if aura_val <= 0:
