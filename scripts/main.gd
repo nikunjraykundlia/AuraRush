@@ -7,7 +7,7 @@ extends Node3D
 # --- Race Configuration ---
 const NUM_BOTS := 7
 const TRACK_LENGTH := 3000.0          # Finish line distance in meters
-const TRACK_WIDTH := 16.0             # Lane width
+const TRACK_WIDTH := 20.8             # Lane width increased by 30% for overtaking
 const NUM_LANES := 4                  # Number of driving lanes
 const LANE_WIDTH := TRACK_WIDTH / NUM_LANES
 
@@ -137,6 +137,8 @@ func _ready() -> void:
 	# Initial Lock
 	if player_body.has_method("set_input_enabled"):
 		player_body.set_input_enabled(false)
+		player_body.set_collision_layer_value(1, false)
+		player_body.set_collision_mask_value(1, false)
 	
 	# Init HUD
 	if hud:
@@ -317,7 +319,7 @@ func _setup_bots() -> void:
 	for i in range(NUM_BOTS):
 		var bot := RigidBody3D.new()
 		bot.mass = 600.0           # Lighter than player so they get pushed
-		bot.name = "Bot%d" % i
+		bot.name = "Bot " + str(i + 1)
 		bot.gravity_scale = 0.0
 		bot.lock_rotation = true
 		# Make bots not apply strong forces back to the player
@@ -340,6 +342,15 @@ func _setup_bots() -> void:
 		var bot_visuals = _create_3d_car_model(bot_colors[i], true)
 		bot_visuals.position = Vector3(0, 0, 0) 
 		bot.add_child(bot_visuals)
+		
+		var name_label = Label3D.new()
+		name_label.text = bot.name
+		name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		name_label.position = Vector3(0, 2.0, 0)
+		name_label.font_size = 64
+		name_label.modulate = bot_colors[i]
+		name_label.outline_render_priority = 0
+		bot.add_child(name_label)
 		
 		# Collect wheel node references for spinning animation
 		var wheels: Array[Node3D] = []
@@ -500,6 +511,8 @@ func _unlock_race_start() -> void:
 	# Player unlock
 	if player_body.has_method("set_input_enabled"):
 		player_body.set_input_enabled(true, true) # Enabled=true, FlushBuffered=true
+		player_body.set_collision_layer_value(1, true)
+		player_body.set_collision_mask_value(1, true)
 	
 	# AI unlock
 	ai_active = true
@@ -528,6 +541,13 @@ func _input(event: InputEvent) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	
+	if event is InputEventKey and event.keycode == KEY_R and event.pressed and not event.echo:
+		restart_race()
+
+func restart_race() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 func toggle_pause() -> void:
 	is_paused = !is_paused

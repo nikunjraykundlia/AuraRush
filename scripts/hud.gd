@@ -456,6 +456,27 @@ func show_race_complete(winner_name: String, final_pos: int, total: int):
 	time_label.modulate = Color(1, 1, 1, 0.6)
 	vbox.add_child(time_label)
 	
+	# Restart Button
+	var restart_btn = Button.new()
+	restart_btn.text = "RESTART RACE (R)"
+	restart_btn.add_theme_font_size_override("font_size", 32)
+	restart_btn.custom_minimum_size = Vector2(0, 60)
+	var btn_style = StyleBoxFlat.new()
+	btn_style.bg_color = Color(0.15, 0.15, 0.2)
+	btn_style.border_width_left = 2
+	btn_style.border_width_top = 2
+	btn_style.border_width_right = 2
+	btn_style.border_width_bottom = 2
+	btn_style.border_color = Color(0, 0.96, 1.0)
+	btn_style.set_corner_radius_all(8)
+	restart_btn.add_theme_stylebox_override("normal", btn_style)
+	
+	restart_btn.pressed.connect(func():
+		get_tree().paused = false
+		get_tree().reload_current_scene()
+	)
+	vbox.add_child(restart_btn)
+	
 	# Animate in
 	panel_container.scale = Vector2(0, 0)
 	panel_container.pivot_offset = Vector2(200, 150) # Approx center

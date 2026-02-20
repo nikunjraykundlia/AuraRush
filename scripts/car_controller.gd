@@ -4,11 +4,13 @@ extends VehicleBody3D
 
 const MAX_BRAKE_FORCE = 3000.0
 const MAX_REVERSE_FORCE = 5000.0
-const MAX_STEER_ANGLE = 0.35
-const STEER_SPEED = 1.5              # Snappy steering response
-const JUMP_FORCE = 4000.0             # Lower base jump for smoother arcs
+const MAX_STEER_ANGLE = 0.45
+const STEER_SPEED = 2.0              # Snappy steering response
 const HIGH_SPEED_STEER_REDUCTION = 0.5
 const HIGH_SPEED_THRESHOLD = 55.0
+
+@export var steering_multiplier: float = 1.0
+@export var jump_multiplier: float = 1.0
 
 var max_engine_force = 20000.0
 var base_engine_force = 15000.0
@@ -25,6 +27,10 @@ var current_speed_kmh: float = 0.0
 var steer_target: float = 0.0
 var steer_angle: float = 0.0
 var is_grounded: bool = true   # Updated via RayCast
+
+var jump_count: int = 0
+const MAX_JUMPS: int = 2
+var jump_cooldown_timer: float = 0.0
 
 # Camera variables
 var camera_rotation_x: float = 0.0
@@ -91,6 +97,9 @@ func _physics_process(delta):
 	
 	emit_signal("speed_changed", current_speed_kmh)
 	
+	if jump_cooldown_timer > 0:
+		jump_cooldown_timer -= delta
+	
 	# Force-snap camera for first few frames to prevent white flash at game start
 	if _init_frames < INIT_SNAP_FRAMES:
 		_init_frames += 1
@@ -128,6 +137,8 @@ func handle_input(delta):
 		engine_force = 0
 		brake = MAX_BRAKE_FORCE # Hold brake while locked
 		steering = 0
+		linear_velocity = Vector3.ZERO
+		angular_velocity = Vector3.ZERO
 		return
 	
 	# --------------------------------------------------------------------------
@@ -138,13 +149,13 @@ func handle_input(delta):
 		var speed_ratio = (abs(current_speed_kmh) - HIGH_SPEED_THRESHOLD) / HIGH_SPEED_THRESHOLD
 		speed_factor = lerp(1.0, HIGH_SPEED_STEER_REDUCTION, min(speed_ratio, 1.0))
 	
-	steer_target = steer_input * MAX_STEER_ANGLE * speed_factor
+	steer_target = steer_input * MAX_STEER_ANGLE * speed_factor * steering_multiplier
 	# Snappy steering: fast interpolation toward target, instant center return
 	if abs(steer_input) < 0.1:
 		# Quick return to center when no input
-		steer_angle = lerp(steer_angle, 0.0, STEER_SPEED * 2.0 * delta)
+		steer_angle = lerp(steer_angle, 0.0, STEER_SPEED * 2.0 * steering_multiplier * delta)
 	else:
-		steer_angle = lerp(steer_angle, steer_target, STEER_SPEED * delta)
+		steer_angle = lerp(steer_angle, steer_target, STEER_SPEED * steering_multiplier * delta)
 	steering = steer_angle
 	
 	# --------------------------------------------------------------------------
@@ -177,44 +188,65 @@ func handle_input(delta):
 	# --------------------------------------------------------------------------
 	# JUMP SYNCHRONIZATION
 	# --------------------------------------------------------------------------
-	if jump_input and is_grounded:
-		# Smooth jump: gentle upward arc that scales mildly with speed
-		var speed_bonus = abs(current_speed_kmh) * 10.0  # Gentler scaling
-		var total_jump_force = JUMP_FORCE + speed_bonus
+	if jump_input and jump_count < MAX_JUMPS and jump_cooldown_timer <= 0.0:
+		var h_desired = 5.0
+		var g = 9.81
+		var v = sqrt(2 * g * h_desired)
+		var impulse = mass * v * jump_multiplier
 		
-		# Cap so high-speed jumps don't launch into orbit
-		total_jump_force = min(total_jump_force, 8000.0)
+		# Cancel existing downward momentum if mid-air jumping
+		if jump_count > 0 and linear_velocity.y < 0:
+			var curr_vel = linear_velocity
+			curr_vel.y = 0
+			linear_velocity = curr_vel
 		
 		# Apply upward impulse
-		apply_central_impulse(Vector3.UP * total_jump_force)
+		apply_central_impulse(Vector3.UP * impulse)
 		
-		# Preserve forward momentum during jump for smooth arc
+		# Preserve forward momentum slightly during jump to not lose all speed
 		var forward_dir = -global_transform.basis.z
 		var forward_boost = abs(current_speed_kmh) * 5.0
-		apply_central_impulse(forward_dir * forward_boost)
+		apply_central_impulse(forward_dir * mass * forward_boost * 0.01)
 		
-		is_grounded = false # Prevent double jumps immediately
+		is_grounded = false
+		jump_count += 1
+		jump_cooldown_timer = 0.1
 
 func _check_grounded():
 	# Raycast check is better than velocity
 	if ground_ray and ground_ray.is_colliding():
 		is_grounded = true
+		if jump_cooldown_timer <= 0.0:
+			jump_count = 0
 	else:
 		# Fallback: if raycast misses but we are not moving vertically much, we might be grounded
-		# This helps if the raycast length (1.5m dowwn) is too short for some reason (suspension extension)
 		is_grounded = abs(linear_velocity.y) < 1.0
+		if is_grounded and jump_cooldown_timer <= 0.0:
+			jump_count = 0
 
 func _apply_air_stabilization(delta):
 	if not is_grounded:
 		# Auto-stabilize pitch and roll to land flat
-		var current_rot = global_rotation
+		var current_up = global_transform.basis.y
+		var world_up = Vector3.UP
 		
-		# Apply corrective torque if we are tilting too much
-		var correction_x = -current_rot.x * 2000.0
-		var correction_z = -current_rot.z * 2000.0
+		var error_up = current_up.cross(world_up)
 		
-		apply_torque(global_transform.basis.x * correction_x * delta)
-		apply_torque(global_transform.basis.z * correction_z * delta)
+		var landing_threshold = 2.0
+		var stabilize_strength = 2000.0
+		
+		if ground_ray and ground_ray.is_colliding():
+			var dist = ground_ray.get_collision_point().distance_to(global_position)
+			if dist < landing_threshold:
+				stabilize_strength = 4000.0
+		
+		apply_torque(error_up * stabilize_strength * delta)
+		
+		angular_velocity *= 0.98 # increase damping airborne
+		
+		angular_velocity.x = clamp(angular_velocity.x, -5.0, 5.0)
+		angular_velocity.y = clamp(angular_velocity.y, -3.0, 3.0)
+		angular_velocity.z = clamp(angular_velocity.z, -5.0, 5.0)
 
 func _dampen_wall_contact(_delta):
 	# Absorb wall impacts: kill lateral velocity AND all spinning when near edges
