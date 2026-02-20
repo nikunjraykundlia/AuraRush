@@ -103,27 +103,42 @@ func _setup_position_display():
 	position_panel.add_child(position_label)
 
 func _setup_aura_display():
+	# Add a wrapping Panel to match the SpeedHUD background
+	var aura_panel = Panel.new()
+	aura_panel.name = "AuraPanel"
+	aura_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	# Anchor: x=98%, y=50%
+	aura_panel.anchor_left = 0.98
+	aura_panel.anchor_top = 0.5
+	aura_panel.anchor_right = 0.98
+	aura_panel.anchor_bottom = 0.5
+	aura_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	aura_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	
+	aura_panel.custom_minimum_size = Vector2(160, 100)
+	aura_panel.position = Vector2(-160, -60) # Offset to sit nicely above speedHUD
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.25)
+	style.set_corner_radius_all(8)
+	style.shadow_size = 4
+	style.shadow_color = Color(0, 0, 0, 0.5)
+	aura_panel.add_theme_stylebox_override("panel", style)
+	
+	add_child(aura_panel)
+	
 	aura_container = VBoxContainer.new()
 	aura_container.name = "AuraContainer"
-	aura_container.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
-	# Anchor: x=92%, y=50%
-	aura_container.anchor_left = 0.92
-	aura_container.anchor_top = 0.5
-	aura_container.anchor_right = 0.92
-	aura_container.anchor_bottom = 0.5
-	aura_container.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	aura_container.grow_vertical = Control.GROW_DIRECTION_BOTH
+	aura_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	aura_container.alignment = BoxContainer.ALIGNMENT_CENTER
 	
-	aura_container.custom_minimum_size = Vector2(120, 100)
-	aura_container.position.x -= 120 # Offset
-	aura_container.position.y -= 50  # Center
-	
-	add_child(aura_container)
+	aura_panel.add_child(aura_container)
 	
 	aura_label = Label.new()
 	aura_label.text = "AURA"
 	aura_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	aura_label.add_theme_font_size_override("font_size", 26)
+	aura_label.add_theme_color_override("font_color", Color("#FFFFFF"))
 	aura_container.add_child(aura_label)
 	
 	aura_value = Label.new()
@@ -132,6 +147,7 @@ func _setup_aura_display():
 	aura_value.add_theme_font_size_override("font_size", 32)
 	aura_value.modulate = Color(0, 0.96, 1.0) # Cyan
 	aura_container.add_child(aura_value)
+
 
 func _setup_speed_display():
 	speed_hud_panel = Panel.new()
@@ -167,7 +183,7 @@ func _setup_speed_display():
 	speed_label_title = Label.new()
 	speed_label_title.name = "LabelTitle"
 	speed_label_title.text = "SPEED"
-	speed_label_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	speed_label_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	speed_label_title.add_theme_font_size_override("font_size", 18)
 	speed_label_title.add_theme_color_override("font_color", Color("#FFFFFF"))
 	vbox.add_child(speed_label_title)
@@ -175,46 +191,62 @@ func _setup_speed_display():
 	speed_label_value = Label.new()
 	speed_label_value.name = "LabelValue"
 	speed_label_value.text = "0.0 m/s"
-	speed_label_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	speed_label_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	speed_label_value.add_theme_font_size_override("font_size", 20)
 	speed_label_value.add_theme_color_override("font_color", Color("#00A2FF"))
 	vbox.add_child(speed_label_value)
 
 
 func _setup_timer_display():
+	var timer_panel = Panel.new()
+	timer_panel.name = "TimerPanel"
+	timer_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	# Anchor: x=98%, y=6%
+	timer_panel.anchor_left = 0.98
+	timer_panel.anchor_top = 0.06
+	timer_panel.anchor_right = 0.98
+	timer_panel.anchor_bottom = 0.06
+	timer_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	
+	timer_panel.custom_minimum_size = Vector2(250, 100)
+	timer_panel.position = Vector2(-250, 0)
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.25)
+	style.set_corner_radius_all(8)
+	style.shadow_size = 4
+	style.shadow_color = Color(0, 0, 0, 0.5)
+	timer_panel.add_theme_stylebox_override("panel", style)
+	
+	add_child(timer_panel)
+	
 	var container = VBoxContainer.new()
 	container.name = "TimerContainer"
-	container.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	# Anchor: x=93%, y=6%
-	container.anchor_left = 0.93
-	container.anchor_top = 0.06
-	container.anchor_right = 0.93
-	container.anchor_bottom = 0.06
-	container.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	container.alignment = BoxContainer.ALIGNMENT_CENTER
 	
-	container.position.x -= 200 # Approx width
-	
-	add_child(container)
+	timer_panel.add_child(container)
 	
 	timer_label = Label.new()
 	timer_label.text = "00:00.00"
-	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	timer_label.add_theme_font_size_override("font_size", 30)
 	container.add_child(timer_label)
 	
 	best_time_label = Label.new()
 	best_time_label.text = "BEST TIME --:--.--"
-	best_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	best_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	best_time_label.add_theme_font_size_override("font_size", 18)
 	best_time_label.modulate = Color(1, 1, 1, 0.7)
 	container.add_child(best_time_label)
 	
 	highest_aura_label = Label.new()
 	highest_aura_label.text = "MAX AURA: 0"
-	highest_aura_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	highest_aura_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	highest_aura_label.add_theme_font_size_override("font_size", 18)
 	highest_aura_label.modulate = Color(1.0, 0.84, 0.0, 0.85)  # Gold
 	container.add_child(highest_aura_label)
+
 
 var player_map_marker: ColorRect
 var bot_map_markers: Array[ColorRect] = []

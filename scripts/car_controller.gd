@@ -68,7 +68,7 @@ func _ready():
 		_force_snap_camera()
 
 	driver_camera_node = Node3D.new()
-	driver_camera_node.position = Vector3(0.0, 0.4, -0.6) # Moved down and forward (towards steering wheel)
+	driver_camera_node.position = Vector3(0.3, 1.7, -0.2) 
 	add_child(driver_camera_node)
 
 	# Setup Ground Raycast
