@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dk3d53swnixby"
 path.s3tc="res://.godot/imported/Wheel_RIMMUSCLE_01_MET-RIMMUSCLE_01_ROUGH.png-7480242d780c0092a801fa0eb3803104.s3tc.ctex"
+path.etc2="res://.godot/imported/Wheel_RIMMUSCLE_01_MET-RIMMUSCLE_01_ROUGH.png-7480242d780c0092a801fa0eb3803104.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={}
@@ -13,7 +14,7 @@ generator_parameters={}
 [deps]
 
 source_file="res://assets/models/Doge/Wheel_RIMMUSCLE_01_MET-RIMMUSCLE_01_ROUGH.png"
-dest_files=["res://.godot/imported/Wheel_RIMMUSCLE_01_MET-RIMMUSCLE_01_ROUGH.png-7480242d780c0092a801fa0eb3803104.s3tc.ctex"]
+dest_files=["res://.godot/imported/Wheel_RIMMUSCLE_01_MET-RIMMUSCLE_01_ROUGH.png-7480242d780c0092a801fa0eb3803104.s3tc.ctex", "res://.godot/imported/Wheel_RIMMUSCLE_01_MET-RIMMUSCLE_01_ROUGH.png-7480242d780c0092a801fa0eb3803104.etc2.ctex"]
 
 [params]
 
