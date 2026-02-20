@@ -137,8 +137,6 @@ func _ready() -> void:
 	# Initial Lock
 	if player_body.has_method("set_input_enabled"):
 		player_body.set_input_enabled(false)
-		player_body.set_collision_layer_value(1, false)
-		player_body.set_collision_mask_value(1, false)
 	
 	# Init HUD
 	if hud:
@@ -511,8 +509,6 @@ func _unlock_race_start() -> void:
 	# Player unlock
 	if player_body.has_method("set_input_enabled"):
 		player_body.set_input_enabled(true, true) # Enabled=true, FlushBuffered=true
-		player_body.set_collision_layer_value(1, true)
-		player_body.set_collision_mask_value(1, true)
 	
 	# AI unlock
 	ai_active = true
@@ -535,18 +531,27 @@ func _apply_ai_launch_impulses() -> void:
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
 		toggle_pause()
+		if get_viewport(): get_viewport().set_input_as_handled()
+		return
 	
 	if event.is_action_pressed("ui_cancel") and not is_paused:
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		if get_viewport(): get_viewport().set_input_as_handled()
+		return
 	
 	if event is InputEventKey and event.keycode == KEY_R and event.pressed and not event.echo:
 		restart_race()
+		return
 
 func restart_race() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = false
+	if pause_menu:
+		pause_menu.visible = false
+	is_paused = false
 	get_tree().reload_current_scene()
 
 func toggle_pause() -> void:
@@ -945,7 +950,7 @@ func _update_race_progress(delta: float) -> void:
 	else:
 		for i in range(NUM_BOTS):
 			if bot_positions[i] >= TRACK_LENGTH:
-				_finish_race("Bot%d" % i)
+				_finish_race("Bot %d" % (i + 1))
 				break
 
 func _finish_race(winner_name: String) -> void:

@@ -41,6 +41,10 @@ var camera_mode: String = "follow"
 @onready var camera_mount = $CameraMount
 @onready var camera = $CameraMount/Camera3D
 var ground_ray: RayCast3D
+var driver_camera_node: Node3D
+var camera_tween: Tween
+var pov_weight: float = 0.0
+var follow_cam_pos: Vector3
 
 # Track progress
 var distance_traveled: float = 0.0
@@ -59,9 +63,13 @@ func _ready():
 	# Detach camera mount from car parent to allow smooth independent movement
 	if camera_mount:
 		camera_mount.set_as_top_level(true)
-		
+		follow_cam_pos = camera_mount.global_position
 		# Force-snap camera immediately to prevent any white flash
 		_force_snap_camera()
+
+	driver_camera_node = Node3D.new()
+	driver_camera_node.position = Vector3(0.0, 0.4, -0.6) # Moved down and forward (towards steering wheel)
+	add_child(driver_camera_node)
 
 	# Setup Ground Raycast
 	ground_ray = RayCast3D.new()
@@ -80,10 +88,19 @@ func _force_snap_camera() -> void:
 	var car_transform = global_transform
 	var car_forward = -car_transform.basis.z
 	var target_position = car_transform.origin - car_forward * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
-	camera_mount.global_position = target_position
+	follow_cam_pos = target_position
+	
+	if driver_camera_node:
+		camera_mount.global_position = follow_cam_pos.lerp(driver_camera_node.global_position, pov_weight)
+	else:
+		camera_mount.global_position = follow_cam_pos
+		
 	if camera:
-		var look_target = car_transform.origin + car_forward * 20.0
-		camera.look_at(look_target, Vector3.UP)
+		var follow_look = car_transform.origin + car_forward * 20.0
+		# Driver looks slightly up and far ahead over the hood
+		var driver_look = car_transform.origin + car_forward * 50.0 + Vector3.UP * 0.2
+		var final_look = follow_look.lerp(driver_look, pov_weight)
+		camera.look_at(final_look, Vector3.UP)
 
 func _physics_process(delta):
 	var velocity = linear_velocity
@@ -189,7 +206,8 @@ func handle_input(delta):
 	# JUMP SYNCHRONIZATION
 	# --------------------------------------------------------------------------
 	if jump_input and jump_count < MAX_JUMPS and jump_cooldown_timer <= 0.0:
-		var h_desired = 5.0
+		# Reduced height by 90% (From 5.0 to 0.5)
+		var h_desired = 0.5
 		var g = 9.81
 		var v = sqrt(2 * g * h_desired)
 		var impulse = mass * v * jump_multiplier
@@ -215,14 +233,13 @@ func handle_input(delta):
 func _check_grounded():
 	# Raycast check is better than velocity
 	if ground_ray and ground_ray.is_colliding():
-		is_grounded = true
-		if jump_cooldown_timer <= 0.0:
-			jump_count = 0
-	else:
-		# Fallback: if raycast misses but we are not moving vertically much, we might be grounded
-		is_grounded = abs(linear_velocity.y) < 1.0
-		if is_grounded and jump_cooldown_timer <= 0.0:
-			jump_count = 0
+		var dist = ground_ray.get_collision_point().distance_to(global_position)
+		if dist < 2.0:
+			is_grounded = true
+			if jump_cooldown_timer <= 0.0:
+				jump_count = 0
+			return
+	is_grounded = false
 
 func _apply_air_stabilization(delta):
 	if not is_grounded:
@@ -232,21 +249,22 @@ func _apply_air_stabilization(delta):
 		
 		var error_up = current_up.cross(world_up)
 		
-		var landing_threshold = 2.0
-		var stabilize_strength = 2000.0
+		var stabilize_strength = 10000.0
+		var damping_strength = 0.92
 		
 		if ground_ray and ground_ray.is_colliding():
 			var dist = ground_ray.get_collision_point().distance_to(global_position)
-			if dist < landing_threshold:
-				stabilize_strength = 4000.0
+			if dist < 4.0:
+				stabilize_strength = 25000.0
+				damping_strength = 0.85
 		
-		apply_torque(error_up * stabilize_strength * delta)
+		apply_torque(error_up * stabilize_strength)
 		
-		angular_velocity *= 0.98 # increase damping airborne
+		angular_velocity *= damping_strength
 		
-		angular_velocity.x = clamp(angular_velocity.x, -5.0, 5.0)
-		angular_velocity.y = clamp(angular_velocity.y, -3.0, 3.0)
-		angular_velocity.z = clamp(angular_velocity.z, -5.0, 5.0)
+		angular_velocity.x = clamp(angular_velocity.x, -3.0, 3.0)
+		angular_velocity.y = clamp(angular_velocity.y, -2.0, 2.0)
+		angular_velocity.z = clamp(angular_velocity.z, -3.0, 3.0)
 
 func _dampen_wall_contact(_delta):
 	# Absorb wall impacts: kill lateral velocity AND all spinning when near edges
@@ -275,11 +293,19 @@ func _dampen_wall_contact(_delta):
 		linear_velocity.x += push_direction * 2.0  # Gentle inward nudge
 
 func _input(event):
-	if event.is_action_pressed("toggle_camera"):
+	if event.is_action_pressed("toggle_camera") or (event is InputEventKey and event.keycode == KEY_C and event.pressed and not event.echo):
 		if camera_mode == "follow":
-			camera_mode = "driver"
+			_switch_camera_mode("driver")
 		else:
-			camera_mode = "follow"
+			_switch_camera_mode("follow")
+
+func _switch_camera_mode(new_mode: String):
+	camera_mode = new_mode
+	if camera_tween:
+		camera_tween.kill()
+	camera_tween = create_tween()
+	var target_weight = 1.0 if camera_mode == "driver" else 0.0
+	camera_tween.tween_property(self, "pov_weight", target_weight, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func update_camera(delta):
 	if not camera_mount:
@@ -288,27 +314,23 @@ func update_camera(delta):
 	var car_transform = global_transform
 	var car_forward = -car_transform.basis.z
 	
-	if camera_mode == "follow":
-		# Chase cam: behind and above the car
-		var target_position = car_transform.origin - car_forward * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
-		camera_mount.global_position = camera_mount.global_position.lerp(target_position, CAMERA_FOLLOW_SPEED * delta)
-		
-		if camera:
-			var look_target = car_transform.origin + car_forward * 20.0
-			camera.look_at(look_target, Vector3.UP)
-		
-		camera_mount.rotation = Vector3.ZERO
+	# Follow cam ideal computations
+	var ideal_follow_pos = car_transform.origin - car_forward * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
+	follow_cam_pos = follow_cam_pos.lerp(ideal_follow_pos, CAMERA_FOLLOW_SPEED * delta)
+	var follow_look = car_transform.origin + car_forward * 20.0
 	
-	elif camera_mode == "driver":
-		# Driver POV: inside the car, looking forward
-		var driver_pos = car_transform.origin + car_forward * 0.5 + Vector3.UP * 1.2
-		camera_mount.global_position = camera_mount.global_position.lerp(driver_pos, 15.0 * delta)
+	# Driver cam computations
+	var driver_pos = driver_camera_node.global_position if driver_camera_node else ideal_follow_pos
+	var driver_look = car_transform.origin + car_forward * 50.0 + Vector3.UP * 0.2
+	
+	# Blend the two
+	camera_mount.global_position = follow_cam_pos.lerp(driver_pos, pov_weight)
+	var final_look = follow_look.lerp(driver_look, pov_weight)
+	
+	if camera:
+		camera.look_at(final_look, Vector3.UP)
 		
-		if camera:
-			var look_target = car_transform.origin + car_forward * 50.0 + Vector3.UP * 0.8
-			camera.look_at(look_target, Vector3.UP)
-		
-		camera_mount.rotation = Vector3.ZERO
+	camera_mount.rotation = Vector3.ZERO
 
 func reset_car():
 	global_transform.origin = Vector3(0, 2, 0)
@@ -316,6 +338,9 @@ func reset_car():
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	early_input_buffer.clear()
+	distance_traveled = 0.0
+	jump_count = 0
+	is_grounded = false
 	# Reset Engine Force
 	max_engine_force = base_engine_force
 

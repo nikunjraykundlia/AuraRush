@@ -12,6 +12,9 @@ func _ready() -> void:
 	pause_menu.visible = false
 	pause_menu.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 	
+	if settings_button:
+		settings_button.queue_free()
+	
 	# Connect pause menu buttons
 	if resume_button:
 		resume_button.pressed.connect(_on_resume_pressed)
@@ -24,18 +27,28 @@ func _ready() -> void:
 
 
 func _on_resume_pressed() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = false
 	pause_menu.visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	
+	var main = get_parent()
+	if main and "is_paused" in main:
+		main.is_paused = false
 
 
 func _on_settings_pressed() -> void:
-	print("Settings menu not implemented yet")
-
+	pass
 
 func _on_restart_pressed() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = false
-	get_tree().reload_current_scene()
+	
+	var main = get_parent()
+	if main and main.has_method("restart_race"):
+		main.restart_race()
+	else:
+		get_tree().reload_current_scene()
 
 
 func _on_quit_pressed() -> void:
