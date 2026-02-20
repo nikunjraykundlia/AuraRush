@@ -16,6 +16,10 @@ var countdown_panel: Control
 var countdown_label: Label
 var recover_panel: Panel
 var recover_label: Label
+var speed_hud_panel: Panel
+var speed_label_title: Label
+var speed_label_value: Label
+var displayed_speed: float = 0.0
 
 # --- State Tracking ---
 var current_rank: int = -1
@@ -60,6 +64,10 @@ func _setup_ui():
 
 	# 7. Recover Display (Top-Center)
 	_setup_recover_display()
+	
+	# 8. Speed Display (Right-side, below Aura)
+	_setup_speed_display()
+
 
 func _setup_position_display():
 	position_panel = Panel.new()
@@ -124,6 +132,54 @@ func _setup_aura_display():
 	aura_value.add_theme_font_size_override("font_size", 32)
 	aura_value.modulate = Color(0, 0.96, 1.0) # Cyan
 	aura_container.add_child(aura_value)
+
+func _setup_speed_display():
+	speed_hud_panel = Panel.new()
+	speed_hud_panel.name = "SpeedHUD"
+	speed_hud_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	# Anchor: x=98%, y=50%
+	speed_hud_panel.anchor_left = 0.98
+	speed_hud_panel.anchor_top = 0.5
+	speed_hud_panel.anchor_right = 0.98
+	speed_hud_panel.anchor_bottom = 0.5
+	speed_hud_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	speed_hud_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	
+	speed_hud_panel.custom_minimum_size = Vector2(160, 60)
+	
+	# Shifted further right, with slightly more space for text
+	speed_hud_panel.position = Vector2(-160, 70) 
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.25)
+	style.set_corner_radius_all(8)
+	style.shadow_size = 4
+	style.shadow_color = Color(0, 0, 0, 0.5)
+	speed_hud_panel.add_theme_stylebox_override("panel", style)
+	
+	add_child(speed_hud_panel)
+	
+	var vbox = VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	speed_hud_panel.add_child(vbox)
+	
+	speed_label_title = Label.new()
+	speed_label_title.name = "LabelTitle"
+	speed_label_title.text = "SPEED"
+	speed_label_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	speed_label_title.add_theme_font_size_override("font_size", 18)
+	speed_label_title.add_theme_color_override("font_color", Color("#FFFFFF"))
+	vbox.add_child(speed_label_title)
+	
+	speed_label_value = Label.new()
+	speed_label_value.name = "LabelValue"
+	speed_label_value.text = "0.0 m/s"
+	speed_label_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	speed_label_value.add_theme_font_size_override("font_size", 20)
+	speed_label_value.add_theme_color_override("font_color", Color("#00A2FF"))
+	vbox.add_child(speed_label_value)
+
 
 func _setup_timer_display():
 	var container = VBoxContainer.new()
@@ -323,6 +379,17 @@ func update_rank(rank: int, total: int):
 
 func update_aura(current_points: float):
 	aura_value.text = str(int(current_points))
+
+func update_speed_display(measured_speed: float, delta: float):
+	if !speed_hud_panel.visible:
+		return
+	displayed_speed = lerpf(displayed_speed, measured_speed, clampf(delta * 10.0, 0.0, 1.0))
+	speed_label_value.text = "%.1f m/s" % displayed_speed
+
+func toggle_speed_hud():
+	if speed_hud_panel:
+		speed_hud_panel.visible = !speed_hud_panel.visible
+
 
 func pulse_aura_display():
 	var tween = create_tween()

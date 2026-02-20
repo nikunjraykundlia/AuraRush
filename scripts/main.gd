@@ -546,6 +546,11 @@ func _input(event: InputEvent) -> void:
 		restart_race()
 		return
 
+	if event is InputEventKey and event.keycode == KEY_H and event.pressed and not event.echo:
+		if hud and hud.has_method("toggle_speed_hud"):
+			hud.toggle_speed_hud()
+		return
+
 func restart_race() -> void:
 	Engine.time_scale = 1.0
 	get_tree().paused = false
@@ -611,11 +616,17 @@ func _physics_process(delta: float) -> void:
 			
 			# UI Update Rate limiter could be implemented here if needed, but per-frame is smooth
 			if hud:
+				var speed_m_s = player_body.linear_velocity.length()
+				if hud.has_method("update_speed_display"):
+					hud.update_speed_display(speed_m_s, delta)
+				
 				if race_state == "racing":
 					hud.update_rank(player_rank, NUM_BOTS + 1)
 					hud.update_aura(aura_meter)
 				
 				# Minimap update
+
+
 				var player_prog = player_position / TRACK_LENGTH
 				var bot_progs = []
 				for pos in bot_positions:

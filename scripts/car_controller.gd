@@ -206,8 +206,8 @@ func handle_input(delta):
 	# JUMP SYNCHRONIZATION
 	# --------------------------------------------------------------------------
 	if jump_input and jump_count < MAX_JUMPS and jump_cooldown_timer <= 0.0:
-		# Reduced height by 90% (From 5.0 to 0.5)
-		var h_desired = 0.5
+		# Jump height to cleanly clear another car
+		var h_desired = 1
 		var g = 9.81
 		var v = sqrt(2 * g * h_desired)
 		var impulse = mass * v * jump_multiplier
@@ -268,12 +268,12 @@ func _apply_air_stabilization(delta):
 
 func _dampen_wall_contact(_delta):
 	# Absorb wall impacts: kill lateral velocity AND all spinning when near edges
-	# Track width is 16m, edges at ±8.0, walls at ±8.25
+	# Track width is 20.8m, edges at ±10.4, walls at ±10.65
 	var x_pos = global_position.x
 	var abs_x = abs(x_pos)
-	var track_half_width = 8.0  # TRACK_WIDTH / 2.0
+	var track_half_width = 10.4  # TRACK_WIDTH / 2.0
 	
-	if abs_x > track_half_width - 0.5:  # Within 0.5m of the wall
+	if abs_x > track_half_width - 0.1:  # Within 0.1m of the wall
 		# 1. Kill lateral (X) velocity almost completely — wall absorbs the hit
 		linear_velocity.x *= 0.05  # Keep only 5%
 		
