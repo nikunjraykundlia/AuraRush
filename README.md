@@ -62,7 +62,7 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 - Camera is detached as top-level and lerps to target to prevent white-flash at scene start.
 
 ### ⏸️ Pause Menu
-- Resume, Restart (`R`), Settings, and Quit buttons.
+- Resume, Restart (`R`), and Quit buttons.
 - Processes during `PROCESS_MODE_WHEN_PAUSED` so it remains responsive while the game is frozen.
 - Mouse captured/released automatically on pause/resume.
 
