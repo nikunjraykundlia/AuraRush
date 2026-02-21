@@ -22,7 +22,7 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 ### 🏎️ Vehicle Physics (VehicleBody3D)
 - Full **VehicleBody3D**-based player car with 4 independent `VehicleWheel3D` nodes (front-steer, rear-traction).
 - **Responsive Controls**: Proper acceleration, gradually synced braking/reverse logic, and snappy interpolation-based steering.
-- **Speed Limit**: Player car is capped at a maximum velocity of 190 m/s to maintain clear control at extreme speeds.
+- **Speed Limit**: Player car is capped at a maximum velocity of 180 m/s to maintain clear control at extreme speeds.
 - **Targeted Jumps & Stabilization**: Jump height perfectly tuned to quickly clear opponent cars. Features mid-air steering, limited double jumps, and auto-stabilization torque for clean four-wheel landings.
 - **Raycast ground detection** with fallback velocity check for reliable grounded state.
 - **Side bumpers** with frictionless physics materials to prevent wall-sticking.
@@ -41,7 +41,7 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 - **Streak Multiplier**: Consecutive clean actions increase collection rate.
 
 ### 🤖 Bot AI
-- **10 Cars Total**: 9 AI opponents face off against the player (Bot 1 through Bot 9) with varying speed logic (slow up to 120m/s, fast up to 180m/s) so players can overtake them dynamically.
+- **10 Cars Total**: 9 AI opponents face off against the player (Bot 1 through Bot 9) with varying speed logic (tiered groups: slow up to 80m/s, medium up to 100m/s, fast up to 130m/s) so players can overtake them dynamically.
 - Lane-change decision system with 1.5s cooldown and smooth interpolated lateral movement.
 - Banking animation during lane changes for visual polish.
 - All bots are locked during countdown and receive a randomized ±5% speed variation at launch.

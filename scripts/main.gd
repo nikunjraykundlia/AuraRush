@@ -370,13 +370,14 @@ func _setup_bots() -> void:
 		# Initialize bot state
 		bot_positions.append(bot_z)
 		bot_lanes.append(bot_lane)
-		# Randomize bot speed widely but skewed higher for difficulty
-		# Make some fast (upto 180m/s), some slow (upto 120m/s)
+		# Set bot speeds based on difficulty tiers
 		var speed = 0.0
-		if i % 2 == 0:
-			speed = randf_range(60.0, 120.0)
+		if i < 4:
+			speed = randf_range(60.0, 80.0)
+		elif i >= 4 and i < 7:
+			speed = randf_range(60.0, 100.0)
 		else:
-			speed = randf_range(120.0, 180.0)
+			speed = randf_range(80.0, 130.0)
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
 		bot_current_x.append(bot_x)

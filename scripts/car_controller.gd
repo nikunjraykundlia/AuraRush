@@ -31,6 +31,7 @@ var is_grounded: bool = true   # Updated via RayCast
 var jump_count: int = 0
 const MAX_JUMPS: int = 2
 var jump_cooldown_timer: float = 0.0
+var hover_timer: float = 0.0
 
 # Camera variables
 var camera_rotation_x: float = 0.0
@@ -105,8 +106,8 @@ func _force_snap_camera() -> void:
 func _physics_process(delta):
 	var velocity = linear_velocity
 	
-	if velocity.length() > 190.0:
-		velocity = velocity.normalized() * 190.0
+	if velocity.length() > 180.0:
+		velocity = velocity.normalized() * 180.0
 		linear_velocity = velocity
 
 	current_speed_kmh = velocity.length() * 3.6
@@ -126,6 +127,15 @@ func _physics_process(delta):
 	if _init_frames < INIT_SNAP_FRAMES:
 		_init_frames += 1
 		_force_snap_camera()
+	
+	if hover_timer > 0.0:
+		hover_timer -= delta
+		gravity_scale = 0.0
+		linear_velocity.y = 0.0
+		if hover_timer <= 0.0:
+			gravity_scale = 1.0
+	else:
+		gravity_scale = 1.0
 	
 	_check_grounded()
 	handle_input(delta)
@@ -211,29 +221,31 @@ func handle_input(delta):
 	# JUMP SYNCHRONIZATION
 	# --------------------------------------------------------------------------
 	if jump_input and jump_count < MAX_JUMPS and jump_cooldown_timer <= 0.0:
-		# Jump height to cleanly clear another car
-		var h_desired = 1
-		var g = 9.81
-		var v = sqrt(2 * g * h_desired)
-		var impulse = mass * v * jump_multiplier
-		
-		# Cancel existing downward momentum if mid-air jumping
-		if jump_count > 0 and linear_velocity.y < 0:
-			var curr_vel = linear_velocity
-			curr_vel.y = 0
-			linear_velocity = curr_vel
-		
-		# Apply upward impulse
-		apply_central_impulse(Vector3.UP * impulse)
-		
-		# Preserve forward momentum slightly during jump to not lose all speed
-		var forward_dir = -global_transform.basis.z
-		var forward_boost = abs(current_speed_kmh) * 5.0
-		apply_central_impulse(forward_dir * mass * forward_boost * 0.01)
-		
-		is_grounded = false
-		jump_count += 1
-		jump_cooldown_timer = 0.1
+		if jump_count == 0:
+			# First jump: jump up to 2.0
+			var h_desired = 2.0
+			var g = 9.81
+			var v = sqrt(2 * g * h_desired)
+			var impulse = mass * v * jump_multiplier
+			
+			apply_central_impulse(Vector3.UP * impulse)
+			
+			# Preserve forward momentum slightly during jump
+			var forward_dir = -global_transform.basis.z
+			var forward_boost = abs(current_speed_kmh) * 5.0
+			apply_central_impulse(forward_dir * mass * forward_boost * 0.01)
+			
+			is_grounded = false
+			jump_count += 1
+			jump_cooldown_timer = 0.1
+		elif jump_count == 1:
+			# Double tap: hover in air for 0.5 second
+			hover_timer = 0.5
+			linear_velocity.y = 0.0
+			
+			is_grounded = false
+			jump_count += 1
+			jump_cooldown_timer = 0.1
 
 func _check_grounded():
 	# Raycast check is better than velocity
@@ -243,6 +255,8 @@ func _check_grounded():
 			is_grounded = true
 			if jump_cooldown_timer <= 0.0:
 				jump_count = 0
+				hover_timer = 0.0
+				gravity_scale = 1.0
 			return
 	is_grounded = false
 
@@ -345,6 +359,8 @@ func reset_car():
 	early_input_buffer.clear()
 	distance_traveled = 0.0
 	jump_count = 0
+	hover_timer = 0.0
+	gravity_scale = 1.0
 	is_grounded = false
 	# Reset Engine Force
 	max_engine_force = base_engine_force

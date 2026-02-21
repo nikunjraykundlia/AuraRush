@@ -73,17 +73,17 @@ func _setup_position_display():
 	position_panel = Panel.new()
 	position_panel.name = "PositionPanel"
 	position_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
-	# Anchor: x=2%, y=50%
-	position_panel.anchor_left = 0.02
-	position_panel.anchor_top = 0.5
-	position_panel.anchor_right = 0.02
-	position_panel.anchor_bottom = 0.5
+	# Anchor: x=1%, y=60%
+	position_panel.anchor_left = 0.01
+	position_panel.anchor_top = 0.6
+	position_panel.anchor_right = 0.01
+	position_panel.anchor_bottom = 0.6
 	# Grow right
 	position_panel.grow_horizontal = Control.GROW_DIRECTION_END
 	position_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	
 	position_panel.custom_minimum_size = Vector2(160, 80)
-	position_panel.position = Vector2(30, -40) # Offset from center-left anchor
+	position_panel.position = Vector2(10, 0) # Offset from center-left anchor
 	
 	# Style
 	var style = StyleBoxFlat.new()
