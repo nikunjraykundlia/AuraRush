@@ -441,39 +441,56 @@ void fragment() {
 }
 """
 
+var _cached_neon_shader: Shader = null
+
 func _create_neon_material(color: Color) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
-	var shader = Shader.new()
-	shader.code = NEON_CAR_SHADER
-	mat.shader = shader
+	
+	if not _cached_neon_shader:
+		_cached_neon_shader = Shader.new()
+		_cached_neon_shader.code = NEON_CAR_SHADER
+		
+	mat.shader = _cached_neon_shader
 	mat.set_shader_parameter("albedo_color", Vector3(color.r, color.g, color.b))
 	mat.set_shader_parameter("emission_strength", 4.0)
 	return mat
 
+var _cached_simple_materials: Dictionary = {}
+
 func _create_simple_neon_material(color: Color) -> StandardMaterial3D:
-	# Fallback/Simple material if needed, or for static objects like barriers
+	if _cached_simple_materials.has(color):
+		return _cached_simple_materials[color]
+		
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.emission_enabled = true
 	mat.emission = color
 	mat.emission_energy_multiplier = 2.0
+	
+	_cached_simple_materials[color] = mat
 	return mat
+
+var _cached_track_material: StandardMaterial3D = null
 
 func _create_track_material() -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.05, 0.05, 0.08) # Darker track to pop neon
-	mat.roughness = 0.6
-	mat.metallic = 0.3
-	return mat
+	if not _cached_track_material:
+		_cached_track_material = StandardMaterial3D.new()
+		_cached_track_material.albedo_color = Color(0.05, 0.05, 0.08) # Darker track to pop neon
+		_cached_track_material.roughness = 0.6
+		_cached_track_material.metallic = 0.3
+	return _cached_track_material
+
+var _cached_aura_orb_material: StandardMaterial3D = null
 
 func _create_aura_orb_material() -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.0, 0.96, 1.0, 0.8)
-	mat.emission_enabled = true
-	mat.emission = Color(0.0, 0.96, 1.0)
-	mat.emission_energy_multiplier = 3.0
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	return mat
+	if not _cached_aura_orb_material:
+		_cached_aura_orb_material = StandardMaterial3D.new()
+		_cached_aura_orb_material.albedo_color = Color(0.0, 0.96, 1.0, 0.8)
+		_cached_aura_orb_material.emission_enabled = true
+		_cached_aura_orb_material.emission = Color(0.0, 0.96, 1.0)
+		_cached_aura_orb_material.emission_energy_multiplier = 3.0
+		_cached_aura_orb_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	return _cached_aura_orb_material
 
 # Renamed original neon material function to distinguish usage
 # _create_neon_material is now the specialized Car Shader
