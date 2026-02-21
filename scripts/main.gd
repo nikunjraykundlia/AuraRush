@@ -240,6 +240,44 @@ func _setup_track() -> void:
 			barrier_mesh.mesh.material = _create_simple_neon_material(barrier_color)
 			barrier_body.add_child(barrier_mesh)
 
+	# ---- START LINE at 8m ----
+	var start_line = MeshInstance3D.new()
+	start_line.mesh = BoxMesh.new()
+	start_line.mesh.size = Vector3(TRACK_WIDTH + 1.0, 0.15, 3.0)
+	start_line.position = Vector3(0, 0.08, 8.0)
+	
+	var start_mat = StandardMaterial3D.new()
+	start_mat.albedo_color = Color(1.0, 1.0, 1.0)
+	start_mat.emission_enabled = true
+	start_mat.emission = Color(1.0, 1.0, 1.0)
+	start_mat.emission_energy_multiplier = 5.0
+	start_line.mesh.material = start_mat
+	add_child(start_line)
+	
+	var cyan_color = Color(0.0, 0.96, 1.0)
+	for side in [-1, 1]:
+		var pillar = MeshInstance3D.new()
+		pillar.mesh = BoxMesh.new()
+		pillar.mesh.size = Vector3(0.5, 8.0, 0.5)
+		pillar.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.5), 4.0, 8.0)
+		pillar.mesh.material = _create_simple_neon_material(cyan_color)
+		add_child(pillar)
+	
+	var start_top_bar = MeshInstance3D.new()
+	start_top_bar.mesh = BoxMesh.new()
+	start_top_bar.mesh.size = Vector3(TRACK_WIDTH + 1.5, 0.5, 0.5)
+	start_top_bar.position = Vector3(0, 8.0, 8.0)
+	start_top_bar.mesh.material = _create_simple_neon_material(cyan_color)
+	add_child(start_top_bar)
+	
+	for side in [-1, 1]:
+		var flag = MeshInstance3D.new()
+		flag.mesh = BoxMesh.new()
+		flag.mesh.size = Vector3(0.1, 2.0, 1.5)
+		flag.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.8), 6.0, 8.0)
+		flag.mesh.material = _create_simple_neon_material(cyan_color)
+		add_child(flag)
+
 	# ---- FINISH LINE at 5000m ----
 	# Visual finish line on the ground
 	var finish_line = MeshInstance3D.new()
@@ -375,11 +413,11 @@ func _setup_bots() -> void:
 		# Set bot speeds based on difficulty tiers
 		var speed = 0.0
 		if i < 4:
-			speed = randf_range(60.0, 80.0)
+			speed = randf_range(70.0, 85.0)
 		elif i >= 4 and i < 7:
-			speed = randf_range(60.0, 100.0)
+			speed = randf_range(75.0, 105.0)
 		else:
-			speed = randf_range(80.0, 115.0)
+			speed = randf_range(90.0, 125.0)
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
 		bot_current_x.append(bot_x)

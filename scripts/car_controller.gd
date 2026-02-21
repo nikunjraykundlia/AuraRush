@@ -105,10 +105,11 @@ func _force_snap_camera() -> void:
 
 func _physics_process(delta):
 	var velocity = linear_velocity
+	var horiz_vel = Vector3(velocity.x, 0, velocity.z)
 	
-	if velocity.length() > 180.0:
-		velocity = velocity.normalized() * 180.0
-		linear_velocity = velocity
+	if horiz_vel.length() > 190.0:
+		horiz_vel = horiz_vel.normalized() * 190.0
+		linear_velocity = Vector3(horiz_vel.x, velocity.y, horiz_vel.z)
 
 	current_speed_kmh = velocity.length() * 3.6
 	
@@ -222,8 +223,8 @@ func handle_input(delta):
 	# --------------------------------------------------------------------------
 	if jump_input and jump_count < MAX_JUMPS and jump_cooldown_timer <= 0.0:
 		if jump_count == 0:
-			# First jump: jump up to 2.0
-			var h_desired = 2.0
+			# First jump: jump up to 3.0 meters
+			var h_desired = 4.0
 			var g = 9.81
 			var v = sqrt(2 * g * h_desired)
 			var impulse = mass * v * jump_multiplier
