@@ -1,4 +1,4 @@
-<img src="game_icon.png" width="150" align="left">
+<img src="game_icon.png" width="150" align="center">
 
 # Aura Rush
 
