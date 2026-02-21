@@ -1,12 +1,14 @@
+<img src="game_icon.png" width="150" align="left">
+
 # Aura Rush
 
-**Aura Rush** is a high-speed, neon-styled 3D arcade racing game built with **Godot 4.6**. Race against 7 AI-controlled bots on a 3000m straight neon track, collect Aura orbs to charge your unlimited boost meter, and master the physics-based car controls to cross the finish line first.
+**Aura Rush** is a high-speed, neon-styled 3D arcade racing game built with **Godot 4.6**. Race against 9 AI-controlled bots on a 5000m straight neon track, collect Aura orbs to charge your unlimited boost meter, and master the physics-based car controls to cross the finish line first.
 
 ## 🏁 Overview
 
-In **Aura Rush**, speed and skill are everything. Compete in a straight-line sprint against 7 opponent bots on a luminous, barrier-lined track.
+In **Aura Rush**, speed and skill are everything. Compete in a straight-line sprint against 9 opponent bots on a luminous, barrier-lined track.
 
-- **Race 3000m**: A single straight, widened track divided into 4 lanes for better overtaking, bordered by neon barriers with solid boundary walls.
+- **Race 5000m**: A single straight, widened track divided into 4 lanes for better overtaking, bordered by neon barriers with solid boundary walls.
 - **Collect Aura Orbs**: Glowing cyan spheres scatter the track — collecting them instantly reduces race time (-0.1s) and applies a forward speed boost that scales seamlessly with your total Aura.
 - **Overtake for Bonuses**: Passing an opponent awards +10 Aura points instantly.
 - **Stay Clean**: Collisions with bots cost -15 Aura and reset your streak multiplier.
@@ -18,6 +20,7 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 ### 🏎️ Vehicle Physics (VehicleBody3D)
 - Full **VehicleBody3D**-based player car with 4 independent `VehicleWheel3D` nodes (front-steer, rear-traction).
 - **Responsive Controls**: Proper acceleration, gradually synced braking/reverse logic, and snappy interpolation-based steering.
+- **Speed Limit**: Player car is capped at a maximum velocity of 190 m/s to maintain clear control at extreme speeds.
 - **Targeted Jumps & Stabilization**: Jump height perfectly tuned to quickly clear opponent cars. Features mid-air steering, limited double jumps, and auto-stabilization torque for clean four-wheel landings.
 - **Raycast ground detection** with fallback velocity check for reliable grounded state.
 - **Side bumpers** with frictionless physics materials to prevent wall-sticking.
@@ -26,7 +29,7 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 ### 🎨 Neon Visual Style
 - **Custom Fresnel edge-glow shader** on all cars — dark metallic body with pulsating neon edge emission.
 - **Futuristic Supercar Models**: 3D vehicle models styled with a Pagani aesthetic, prominently featuring visible wheels and properly glowing edges.
-- Player car is **neon cyan**; bot cars come in a full spectrum of colors (Pink, Yellow, Green, Purple, Orange, Blue, Red).
+- Player car is **pure white**; bot cars come in a full spectrum of colors (Pink, Yellow, Green, Purple, Orange, Blue, Red, Cyan, Magenta).
 - Glowing barrier walls, lane dividers, and a massive neon finish line arching over the track.
 
 ### ⚡ Aura System
@@ -36,13 +39,13 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 - **Streak Multiplier**: Consecutive clean actions increase collection rate.
 
 ### 🤖 Bot AI
-- **7 AI opponents** (Bot 1 through Bot 7) with randomized speeds (40–62 m/s per session).
+- **10 Cars Total**: 9 AI opponents face off against the player (Bot 1 through Bot 9) with varying speed logic (slow up to 120m/s, fast up to 180m/s) so players can overtake them dynamically.
 - Lane-change decision system with 1.5s cooldown and smooth interpolated lateral movement.
 - Banking animation during lane changes for visual polish.
 - All bots are locked during countdown and receive a randomized ±5% speed variation at launch.
 
 ### 🗺️ Dynamic HUD
-- **Real-time Minimap** (top-left) showing player and 7 bot positions relative to the finish line.
+- **Real-time Minimap** (top-left) showing player and 9 bot positions relative to the finish line.
 - **Dynamic Speed UI**: Toggleable speed display using `H`.
 - **Position Indicator** (center-left) with green/red flash on rank changes.
 - **Aura Meter** (center-right) showing total aura and elastic pulse animation on orb collection.

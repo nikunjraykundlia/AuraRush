@@ -5,8 +5,8 @@ extends Node3D
 # ============================================================================
 
 # --- Race Configuration ---
-const NUM_BOTS := 7
-const TRACK_LENGTH := 3000.0          # Finish line distance in meters
+const NUM_BOTS := 9
+const TRACK_LENGTH := 5000.0          # Finish line distance in meters
 const TRACK_WIDTH := 20.8             # Lane width increased by 30% for overtaking
 const NUM_LANES := 4                  # Number of driving lanes
 const LANE_WIDTH := TRACK_WIDTH / NUM_LANES
@@ -150,13 +150,13 @@ func _ready() -> void:
 	if player_mesh_node:
 		player_mesh_node.queue_free() # Remove the placeholder box
 	
-	# Create 3D model visuals for player (cyan neon color)
-	var player_car_visuals = _create_3d_car_model(Color(0.0, 0.96, 1.0), false)
+	# Create 3D model visuals for player (white neon color)
+	var player_car_visuals = _create_3d_car_model(Color(1.0, 1.0, 1.0), false)
 	player_car_visuals.name = "CarVisuals"
 	player_body.add_child(player_car_visuals)
 	
 	# 2. Apply Neon Shader to Player Wheels
-	var wheel_mat = _create_neon_material(Color(0.0, 0.96, 1.0))
+	var wheel_mat = _create_neon_material(Color(1.0, 1.0, 1.0))
 	for wheel_name in ["FrontLeftWheel", "FrontRightWheel", "RearLeftWheel", "RearRightWheel"]:
 		var wheel_node = player_body.get_node_or_null(wheel_name)
 		if wheel_node:
@@ -169,7 +169,7 @@ func _ready() -> void:
 				var wheel_model = _car_wheel_scene.instantiate()
 				wheel_model.name = "WheelModel"
 				wheel_model.scale = Vector3(0.9, 0.9, 0.9)
-				_apply_neon_to_model(wheel_model, Color(0.0, 0.96, 1.0))
+				_apply_neon_to_model(wheel_model, Color(1.0, 1.0, 1.0))
 				wheel_node.add_child(wheel_model)
 	
 	# Smooth start: wait for scene to fully initialize, then start countdown
@@ -240,12 +240,12 @@ func _setup_track() -> void:
 			barrier_mesh.mesh.material = _create_simple_neon_material(barrier_color)
 			barrier_body.add_child(barrier_mesh)
 
-	# ---- FINISH LINE at 3000m ----
+	# ---- FINISH LINE at 5000m ----
 	# Visual finish line on the ground
 	var finish_line = MeshInstance3D.new()
 	finish_line.mesh = BoxMesh.new()
 	finish_line.mesh.size = Vector3(TRACK_WIDTH + 1.0, 0.15, 3.0)
-	finish_line.position = Vector3(0, 0.08, 3000.0)
+	finish_line.position = Vector3(0, 0.08, 5000.0)
 	
 	# Checkerboard-style neon finish material
 	var finish_mat = StandardMaterial3D.new()
@@ -261,14 +261,14 @@ func _setup_track() -> void:
 		var pillar = MeshInstance3D.new()
 		pillar.mesh = BoxMesh.new()
 		pillar.mesh.size = Vector3(0.5, 8.0, 0.5)
-		pillar.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.5), 4.0, 3000.0)
+		pillar.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.5), 4.0, 5000.0)
 		pillar.mesh.material = _create_simple_neon_material(Color(1.0, 0.84, 0.0))  # Gold
 		add_child(pillar)
 	
 	var top_bar = MeshInstance3D.new()
 	top_bar.mesh = BoxMesh.new()
 	top_bar.mesh.size = Vector3(TRACK_WIDTH + 1.5, 0.5, 0.5)
-	top_bar.position = Vector3(0, 8.0, 3000.0)
+	top_bar.position = Vector3(0, 8.0, 5000.0)
 	top_bar.mesh.material = _create_simple_neon_material(Color(1.0, 0.84, 0.0))  # Gold
 	add_child(top_bar)
 	
@@ -277,19 +277,19 @@ func _setup_track() -> void:
 		var flag = MeshInstance3D.new()
 		flag.mesh = BoxMesh.new()
 		flag.mesh.size = Vector3(0.1, 2.0, 1.5)
-		flag.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.8), 6.0, 3000.0)
+		flag.position = Vector3(side * (TRACK_WIDTH / 2.0 + 0.8), 6.0, 5000.0)
 		var flag_mat = _create_simple_neon_material(Color(0.0, 1.0, 0.0))  # Green glow
 		flag.mesh.material = flag_mat
 		add_child(flag)
 
-	# End Wall at 3100m (stop wall beyond finish line)
+	# End Wall at 5100m (stop wall beyond finish line)
 	var end_wall_body = StaticBody3D.new()
 	var end_wall_friction = PhysicsMaterial.new()
 	end_wall_friction.friction = 0.5
 	end_wall_friction.bounce = 0.0
 	end_wall_friction.absorbent = true
 	end_wall_body.physics_material_override = end_wall_friction
-	end_wall_body.position = Vector3(0, 10, 3100.0)  # Stop wall 100m past finish
+	end_wall_body.position = Vector3(0, 10, 5100.0)  # Stop wall 100m past finish
 	add_child(end_wall_body)
 	
 	var ec = CollisionShape3D.new()
@@ -311,7 +311,9 @@ func _setup_bots() -> void:
 		Color(0.5, 0.0, 1.0),    # Purple
 		Color(1.0, 0.4, 0.0),    # Orange
 		Color(0.0, 0.5, 1.0),    # Blue
-		Color(1.0, 0.0, 0.0)     # Red
+		Color(1.0, 0.0, 0.0),    # Red
+		Color(0.0, 0.96, 1.0),   # Cyan
+		Color(1.0, 0.0, 1.0)     # Magenta
 	]
 	
 	for i in range(NUM_BOTS):
@@ -369,8 +371,12 @@ func _setup_bots() -> void:
 		bot_positions.append(bot_z)
 		bot_lanes.append(bot_lane)
 		# Randomize bot speed widely but skewed higher for difficulty
-		# Make top bots faster (55-65 range) to challenge player
-		var speed = randf_range(40.0, 62.0)
+		# Make some fast (upto 180m/s), some slow (upto 120m/s)
+		var speed = 0.0
+		if i % 2 == 0:
+			speed = randf_range(60.0, 120.0)
+		else:
+			speed = randf_range(120.0, 180.0)
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
 		bot_current_x.append(bot_x)

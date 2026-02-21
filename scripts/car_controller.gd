@@ -104,6 +104,11 @@ func _force_snap_camera() -> void:
 
 func _physics_process(delta):
 	var velocity = linear_velocity
+	
+	if velocity.length() > 190.0:
+		velocity = velocity.normalized() * 190.0
+		linear_velocity = velocity
+
 	current_speed_kmh = velocity.length() * 3.6
 	
 	# FIXED forward direction
