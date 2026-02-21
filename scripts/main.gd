@@ -322,6 +322,8 @@ func _setup_bots() -> void:
 		bot.name = "Bot " + str(i + 1)
 		bot.gravity_scale = 0.0
 		bot.lock_rotation = true
+		bot.collision_layer = 4 # Layer 3 for bots
+		bot.collision_mask = 0  # Ignore physics collisions to prevent shaking
 		# Make bots not apply strong forces back to the player
 		var bot_phys = PhysicsMaterial.new()
 		bot_phys.friction = 0.0
@@ -377,7 +379,7 @@ func _setup_bots() -> void:
 		elif i >= 4 and i < 7:
 			speed = randf_range(60.0, 100.0)
 		else:
-			speed = randf_range(80.0, 130.0)
+			speed = randf_range(80.0, 115.0)
 		bot_speeds.append(speed)
 		bot_lane_change_timers.append(0.0)
 		bot_current_x.append(bot_x)
@@ -858,8 +860,27 @@ func _update_bot_ai(delta: float) -> void:
 	_handle_player_bot_collisions(delta)
 
 func _bot_consider_lane_change(bot_index: int) -> void:
-	# Check if player is ahead in same lane - try to block or overtake
 	var bot_lane := bot_lanes[bot_index]
+	
+	# Active dodging: if player is ahead and bot is approaching
+	var dist_to_player_z = player_position - bot_positions[bot_index]
+	var dist_x = abs(bot_current_x[bot_index] - player_x_offset)
+	
+	if dist_to_player_z > 0.0 and dist_to_player_z < 35.0 and dist_x < 6.0:
+		var new_lane := bot_lane
+		if player_x_offset > bot_current_x[bot_index]:
+			new_lane = bot_lane - 1
+		else:
+			new_lane = bot_lane + 1
+			
+		new_lane = clampi(new_lane, 0, NUM_LANES - 1)
+		if new_lane == bot_lane: # If couldn't move, explicitly try the other direction
+			new_lane = bot_lane + (1 if bot_lane == 0 else -1)
+			
+		if new_lane != bot_lane:
+			bot_lanes[bot_index] = new_lane
+			bot_lane_change_timers[bot_index] = BOT_LANE_CHANGE_COOLDOWN
+		return
 	
 	# Random lane change for variety
 	if randf() < 0.02:  # 2% chance per frame when cooldown is 0
