@@ -223,7 +223,7 @@ func handle_input(delta):
 	# --------------------------------------------------------------------------
 	if jump_input and jump_count < MAX_JUMPS and jump_cooldown_timer <= 0.0:
 		if jump_count == 0:
-			# First jump: jump up to 3.0 meters
+			# First jump: jump up to .0 meters
 			var h_desired = 4.0
 			var g = 9.81
 			var v = sqrt(2 * g * h_desired)
