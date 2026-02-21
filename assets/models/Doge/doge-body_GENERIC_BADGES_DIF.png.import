@@ -3,24 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://0fn3naoojpuo"
-path.s3tc="res://.godot/imported/doge-body_GENERIC_BADGES_DIF.png-8899a5e2283ef25ab92929465d971549.s3tc.ctex"
-path.etc2="res://.godot/imported/doge-body_GENERIC_BADGES_DIF.png-8899a5e2283ef25ab92929465d971549.etc2.ctex"
+path="res://.godot/imported/doge-body_GENERIC_BADGES_DIF.png-8899a5e2283ef25ab92929465d971549.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 generator_parameters={}
 
 [deps]
 
 source_file="res://assets/models/Doge/doge-body_GENERIC_BADGES_DIF.png"
-dest_files=["res://.godot/imported/doge-body_GENERIC_BADGES_DIF.png-8899a5e2283ef25ab92929465d971549.s3tc.ctex", "res://.godot/imported/doge-body_GENERIC_BADGES_DIF.png-8899a5e2283ef25ab92929465d971549.etc2.ctex"]
+dest_files=["res://.godot/imported/doge-body_GENERIC_BADGES_DIF.png-8899a5e2283ef25ab92929465d971549.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.4
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
@@ -39,5 +37,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=256
 detect_3d/compress_to=0

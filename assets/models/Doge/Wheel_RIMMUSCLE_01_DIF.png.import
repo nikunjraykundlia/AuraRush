@@ -3,24 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cb6dei3c8pcvn"
-path.s3tc="res://.godot/imported/Wheel_RIMMUSCLE_01_DIF.png-829748a643565b276dfdbd7928ce732e.s3tc.ctex"
-path.etc2="res://.godot/imported/Wheel_RIMMUSCLE_01_DIF.png-829748a643565b276dfdbd7928ce732e.etc2.ctex"
+path="res://.godot/imported/Wheel_RIMMUSCLE_01_DIF.png-829748a643565b276dfdbd7928ce732e.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 generator_parameters={}
 
 [deps]
 
 source_file="res://assets/models/Doge/Wheel_RIMMUSCLE_01_DIF.png"
-dest_files=["res://.godot/imported/Wheel_RIMMUSCLE_01_DIF.png-829748a643565b276dfdbd7928ce732e.s3tc.ctex", "res://.godot/imported/Wheel_RIMMUSCLE_01_DIF.png-829748a643565b276dfdbd7928ce732e.etc2.ctex"]
+dest_files=["res://.godot/imported/Wheel_RIMMUSCLE_01_DIF.png-829748a643565b276dfdbd7928ce732e.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.4
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
@@ -39,5 +37,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=1024
+process/size_limit=512
 detect_3d/compress_to=0
