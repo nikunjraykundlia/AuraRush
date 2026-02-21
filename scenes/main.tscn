@@ -64,7 +64,7 @@ layout_mode = 2
 texture = ExtResource("6_logo")
 expand_mode = 3
 stretch_mode = 5
-custom_minimum_size = Vector2(0, 150)
+custom_minimum_size = Vector2(0, 225)
 
 [node name="PauseLabel" type="Label" parent="PauseMenu/VBoxContainer"]
 layout_mode = 2
