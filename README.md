@@ -2,8 +2,6 @@
 
 **Aura Rush** is a high-speed, neon-styled 3D arcade racing game built with **Godot 4.6**. Race against 7 AI-controlled bots on a 3000m straight neon track, collect Aura orbs to charge your unlimited boost meter, and master the physics-based car controls to cross the finish line first.
 
-Play Online: [aurarush.vercel.app](https://aurarush.vercel.app)
-
 ## 🏁 Overview
 
 In **Aura Rush**, speed and skill are everything. Compete in a straight-line sprint against 7 opponent bots on a luminous, barrier-lined track.
