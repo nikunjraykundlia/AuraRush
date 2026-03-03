@@ -22,8 +22,8 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 ### 🏎️ Vehicle Physics (VehicleBody3D)
 - Full **VehicleBody3D**-based player car with 4 independent `VehicleWheel3D` nodes (front-steer, rear-traction).
 - **Responsive Controls**: Proper acceleration, gradually synced braking/reverse logic, and snappy interpolation-based steering.
-- **Speed Limit**: Player horizontal forward velocity is explicitly capped at 190 m/s, allowing the car to maintain its full vertical jump momentum no matter how fast it travels.
-- **Targeted Jumps & Stabilization**: Initial jump height perfectly tuned to 4.0m vertically to instantly clear opponent cars. Features mid-air steering, a 0.5s air-hover double jump mechanic, and auto-stabilization torque for clean four-wheel landings.
+- **Speed Limit & Jump Mechanics**: Player horizontal forward velocity is explicitly capped at 190 m/s. Forward speed is locked/maintained during jumps to prevent artificial acceleration, ensuring the jump's primary purpose remains overtaking opponent cars cleanly.
+- **Targeted Jumps & Stabilization**: Initial jump height perfectly tuned to 4.0m vertically. Features mid-air steering, a 0.5s air-hover double jump mechanic, and auto-stabilization torque for clean four-wheel landings.
 - **Raycast ground detection** with fallback velocity check for reliable grounded state.
 - **Side bumpers** with frictionless physics materials to prevent wall-sticking.
 - **Input buffering**: Throttle presses during countdown are buffered and applied at race start for perfect launches without lag.
@@ -41,7 +41,7 @@ In **Aura Rush**, speed and skill are everything. Compete in a straight-line spr
 - **Streak Multiplier**: Consecutive clean actions increase collection rate.
 
 ### 🤖 Bot AI
-- **10 Cars Total**: 9 AI opponents face off against the player (Bot 1 through Bot 9) with varying speed logic (tiered groups: slow up to 85m/s, medium up to 105m/s, fast up to 125m/s) so players can overtake them dynamically.
+- **10 Cars Total**: 9 AI opponents face off against the player (Bot 1 through Bot 9) with varying speed logic (tiered groups: slow 90-110 m/s, medium 110-130 m/s, fast 130-150 m/s) so players can overtake them dynamically.
 - Lane-change decision system with 1.5s cooldown and smooth interpolated lateral movement.
 - Banking animation during lane changes for visual polish.
 - All bots are locked during countdown and receive a randomized ±5% speed variation at launch.
