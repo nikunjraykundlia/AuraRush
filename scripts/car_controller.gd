@@ -231,10 +231,8 @@ func handle_input(delta):
 			
 			apply_central_impulse(Vector3.UP * impulse)
 			
-			# Preserve forward momentum slightly during jump
-			var forward_dir = -global_transform.basis.z
-			var forward_boost = abs(current_speed_kmh) * 5.0
-			apply_central_impulse(forward_dir * mass * forward_boost * 0.01)
+			# Forward momentum preservation removed intentionally
+
 			
 			is_grounded = false
 			jump_count += 1
