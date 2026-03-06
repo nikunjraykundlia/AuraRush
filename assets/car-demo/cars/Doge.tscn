@@ -21,7 +21,7 @@ engine_force_value = 50
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.997421, 0.340338, -1.50006)
 wheel_radius = 0.37
 wheel_rest_length = 0.095
-suspension_travel = 0.357
+suspension_travel = 0.1
 
 [node name="Wheel" parent="wheal0" index="0" instance=ExtResource("2_eoiid")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.142656, 0, 0)
@@ -30,7 +30,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.142656, 0, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.02668, 0.340338, -1.50006)
 wheel_radius = 0.37
 wheel_rest_length = 0.095
-suspension_travel = 0.357
+suspension_travel = 0.1
 
 [node name="Wheel" parent="wheal1" index="0" instance=ExtResource("2_eoiid")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0775136, 0, 0)
@@ -39,7 +39,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0775136, 0, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.997421, 0.286814, 1.26411)
 wheel_radius = 0.37
 wheel_rest_length = 0.095
-suspension_travel = 0.357
+suspension_travel = 0.1
 
 [node name="Wheel" parent="wheal2" index="0" instance=ExtResource("2_eoiid")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.142656, 0, 0)
@@ -48,7 +48,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.142656, 0, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.02668, 0.286814, 1.26411)
 wheel_radius = 0.37
 wheel_rest_length = 0.095
-suspension_travel = 0.357
+suspension_travel = 0.1
 
 [node name="Wheel" parent="wheal3" index="0" instance=ExtResource("2_eoiid")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0775136, 0, 0)
